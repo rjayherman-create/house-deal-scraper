@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from analysis import run_underwriting
-from llm import generate_explanation
+from server.analysis import run_underwriting
+from server.llm import generate_explanation
 
 app = FastAPI()
 
