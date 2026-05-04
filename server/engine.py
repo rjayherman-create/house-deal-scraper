@@ -107,24 +107,9 @@ class ListingAnalysis:
 # Fetchers (stubs – you’ll wire real scraping/API logic here)
 # ---------------------------------------------------------------------
 
-def fetch_redfin(city: str, state: str, include_photos: bool) -> List[Listing]:
-    # TODO: implement real Redfin fetch
-    return []
 
-
-def fetch_zillow(city: str, state: str, include_photos: bool) -> List[Listing]:
-    # TODO: implement real Zillow fetch
-    return []
-
-
-def fetch_realtor(city: str, state: str, include_photos: bool) -> List[Listing]:
-    # TODO: implement real Realtor.com fetch
-    return []
-
-
-def fetch_craigslist(city: str, state: str, include_photos: bool) -> List[Listing]:
-    # TODO: implement real Craigslist fetch
-    return []
+# Use real scrapers from scraper.py
+from server.scraper import fetch_redfin, fetch_zillow, fetch_realtor, fetch_craigslist
 
 
 # ---------------------------------------------------------------------
