@@ -6,6 +6,7 @@ from server.database import engine, get_db
 from server.models import Base, ListingModel
 from server.analysis import run_underwriting
 from server.llm import generate_explanation
+from server.scraper import scrape_listings
 
 app = FastAPI()
 
@@ -19,7 +20,6 @@ class Listing(BaseModel):
 
 @app.on_event("startup")
 async def on_startup():
-    # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -66,3 +66,29 @@ async def get_history(db=Depends(get_db)):
         ]
     }
 
+
+# -----------------------------
+# SCRAPER ENDPOINT
+# -----------------------------
+class ScrapeRequest(BaseModel):
+    city: str
+    state: str
+    limit: int = 20
+
+
+@app.post("/api/listings/scrape")
+async def scrape_and_save(req: ScrapeRequest, db=Depends(get_db)):
+    listings_data = scrape_listings(req.city, req.state, req.limit)
+
+    saved = []
+    for data in listings_data:
+        listing = ListingModel(**data)
+        db.add(listing)
+        saved.append(data)
+
+    await db.commit()
+
+    return {
+        "count": len(saved),
+        "listings": saved
+    }
