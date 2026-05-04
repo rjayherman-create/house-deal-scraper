@@ -12,7 +12,8 @@ This file exposes API endpoints that call engine.py for:
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from engine import search_listings, serialize_analysis
+from server.engine import search_listings, serialize_analysis
+
 
 app = FastAPI(
     title="House Deal Scraper API",
