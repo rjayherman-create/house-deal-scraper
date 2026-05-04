@@ -109,7 +109,6 @@ class ListingAnalysis:
 
 
 # Use real scrapers from scraper.py
-from server.scraper import fetch_redfin, fetch_zillow, fetch_realtor, fetch_craigslist
 
 
 # ---------------------------------------------------------------------
