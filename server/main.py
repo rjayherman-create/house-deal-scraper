@@ -41,7 +41,7 @@ def persist_analysis(analysis: ListingAnalysis) -> dict:
         state=analysis.listing.state,
         zip_code=raw_listing.get("zip_code"),
         source=analysis.listing.source,
-        asking_price=analysis.listing.price if analysis.listing.price is not None else None,
+        asking_price=analysis.listing.price,
     )
     serialized["listing"]["id"] = saved_listing_id
     serialized["listing"]["zip_code"] = raw_listing.get("zip_code", "")

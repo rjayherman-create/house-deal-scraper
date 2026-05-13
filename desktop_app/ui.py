@@ -122,7 +122,7 @@ class MainWindow(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(listing.get("address", "")))
             self.table.setItem(row, 1, QTableWidgetItem(listing.get("city", "")))
             self.table.setItem(row, 2, QTableWidgetItem(listing.get("state", "")))
-            self.table.setItem(row, 3, QTableWidgetItem(str(listing.get("price", 0))))
+            self.table.setItem(row, 3, QTableWidgetItem(f"${float(listing.get('price') or 0):,.0f}"))
             self.table.setItem(row, 4, QTableWidgetItem(f"{float(score):.2f}"))
 
     def on_row_selected(self, row: int, _column: int):
