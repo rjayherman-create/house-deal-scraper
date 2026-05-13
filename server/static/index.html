@@ -184,11 +184,12 @@
           throw new Error(`Request failed: ${response.status}`);
         }
         const data = await response.json();
-        analyzeStatus.textContent = `Found ${data.length} analyzed listing(s).`;
         if (!Array.isArray(data) || data.length === 0) {
+          analyzeStatus.textContent = "Found 0 analyzed listing(s).";
           analyzeResults.innerHTML = `<p class="muted">No listings returned.</p>`;
           return;
         }
+        analyzeStatus.textContent = `Found ${data.length} analyzed listing(s).`;
         analyzeResults.innerHTML = data.map(listingCardHtml).join("");
       } catch (err) {
         analyzeStatus.textContent = "";
@@ -206,11 +207,12 @@
         }
         const data = await response.json();
         const listings = data.listings || [];
-        listingsStatus.textContent = `Loaded ${listings.length} saved listing(s).`;
         if (!listings.length) {
+          listingsStatus.textContent = "Loaded 0 saved listing(s).";
           listingsResults.innerHTML = `<p class="muted">No saved listings yet.</p>`;
           return;
         }
+        listingsStatus.textContent = `Loaded ${listings.length} saved listing(s).`;
         listingsResults.innerHTML = listings.map(listingCardHtml).join("");
       } catch (err) {
         listingsStatus.textContent = "";
