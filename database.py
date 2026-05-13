@@ -5,7 +5,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-DB_PATH = Path(os.getenv("DISTRESSIQ_DB_PATH", Path(__file__).resolve().parent / "distressiq.db"))
+DEFAULT_DB_PATH = Path(__file__).resolve().parent / "distressiq.db"
+DB_PATH = Path(os.getenv("DISTRESSIQ_DB_PATH", str(DEFAULT_DB_PATH)))
 
 
 def get_connection():

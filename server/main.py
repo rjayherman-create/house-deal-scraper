@@ -41,7 +41,7 @@ def persist_analysis(analysis: ListingAnalysis) -> dict:
         state=analysis.listing.state,
         zip_code=raw_listing.get("zip_code"),
         source=analysis.listing.source,
-        asking_price=int(analysis.listing.price) if analysis.listing.price else None,
+        asking_price=analysis.listing.price if analysis.listing.price is not None else None,
     )
     serialized["listing"]["id"] = saved_listing_id
     serialized["listing"]["zip_code"] = raw_listing.get("zip_code", "")
@@ -72,7 +72,7 @@ async def analyze(
         results = await run_in_threadpool(search_listings, city, state, include_photos)
         return [persist_analysis(result) for result in results]
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="Analysis failed.") from exc
+        raise HTTPException(status_code=500, detail="Analysis failed while fetching listings.") from exc
 
 
 @app.get("/")
