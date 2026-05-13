@@ -1,10 +1,11 @@
 # database.py
+import os
 import sqlite3
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-DB_PATH = Path(__file__).resolve().parent / "distressiq.db"
+DB_PATH = Path(os.getenv("DISTRESSIQ_DB_PATH", Path(__file__).resolve().parent / "distressiq.db"))
 
 
 def get_connection():

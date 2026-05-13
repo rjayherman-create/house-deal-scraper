@@ -4,8 +4,9 @@ FastAPI backend for House Deal Scraper.
 
 from typing import Optional
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 
 from database import get_all_listings, init_db, upsert_listing
 from server.engine import ListingAnalysis, search_listings, serialize_analysis
@@ -68,10 +69,10 @@ async def analyze(
     include_photos: bool = Query(False, description="Fetch photos from all sources"),
 ):
     try:
-        results = search_listings(city, state, include_photos=include_photos)
+        results = await run_in_threadpool(search_listings, city, state, include_photos)
         return [persist_analysis(result) for result in results]
     except Exception as exc:
-        return {"error": True, "message": str(exc)}
+        raise HTTPException(status_code=500, detail="Analysis failed.") from exc
 
 
 @app.get("/")
