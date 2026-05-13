@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>House Deal Scraper</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #151d33;
+      --border: #2d3651;
+      --text: #f4f7ff;
+      --muted: #9fb0d9;
+      --accent: #5b8cff;
+      --error: #ff6f6f;
+    }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+    label {
+      font-size: 14px;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label.inline {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+    input[type="text"] {
+      background: #0e1426;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: 8px;
+      min-width: 160px;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.secondary {
+      background: #293353;
+    }
+    .result-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #0d1429;
+    }
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .error {
+      color: var(--error);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>House Deal Scraper</h1>
+    <p class="muted">Backend + UI running on the same deployment.</p>
+
+    <div class="panel">
+      <h2>Analyze Listings</h2>
+      <div class="row">
+        <label for="city">
+          City
+          <input id="city" type="text" placeholder="Detroit" autocomplete="address-level2" />
+        </label>
+        <label for="state">
+          State
+          <input id="state" type="text" placeholder="MI" maxlength="2" autocomplete="address-level1" />
+        </label>
+        <label class="inline">
+          <input id="photos" type="checkbox" />
+          Include photos
+        </label>
+        <button id="analyzeBtn">Run Analyze</button>
+      </div>
+      <p id="analyzeStatus" class="muted"></p>
+      <div id="analyzeResults"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Saved Listings</h2>
+      <div class="row">
+        <button id="loadListingsBtn" class="secondary">Load Listings</button>
+      </div>
+      <p id="listingsStatus" class="muted"></p>
+      <div id="listingsResults"></div>
+    </div>
+  </div>
+
+  <script>
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const loadListingsBtn = document.getElementById("loadListingsBtn");
+    const analyzeStatus = document.getElementById("analyzeStatus");
+    const listingsStatus = document.getElementById("listingsStatus");
+    const analyzeResults = document.getElementById("analyzeResults");
+    const listingsResults = document.getElementById("listingsResults");
+
+    function renderError(container, message) {
+      container.textContent = "";
+      const p = document.createElement("p");
+      p.className = "error";
+      p.textContent = message;
+      container.appendChild(p);
+    }
+
+    function createListingCard(item) {
+      const l = item.listing || item;
+      const source = l.source || "unknown";
+      const price = l.price ?? l.asking_price;
+      const priceText = Number.isFinite(price) ? `$${price.toLocaleString()}` : "N/A";
+      const cityState = [l.city, l.state].filter(Boolean).join(", ");
+      const card = document.createElement("div");
+      card.className = "result-card";
+
+      const titleRow = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = l.address || "Unknown address";
+      titleRow.appendChild(title);
+      card.appendChild(titleRow);
+
+      const location = document.createElement("div");
+      location.className = "muted";
+      location.textContent = cityState || "Unknown location";
+      card.appendChild(location);
+
+      const priceRow = document.createElement("div");
+      priceRow.textContent = `Price: ${priceText}`;
+      card.appendChild(priceRow);
+
+      const sourceRow = document.createElement("div");
+      sourceRow.className = "muted";
+      sourceRow.textContent = `Source: ${source}`;
+      card.appendChild(sourceRow);
+
+      return card;
+    }
+
+    function renderMutedMessage(container, message) {
+      container.textContent = "";
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = message;
+      container.appendChild(p);
+    }
+
+    function renderListingCards(container, items) {
+      container.textContent = "";
+      const fragment = document.createDocumentFragment();
+      for (const item of items) {
+        fragment.appendChild(createListingCard(item));
+      }
+      container.appendChild(fragment);
+    }
+
+    analyzeBtn.addEventListener("click", async () => {
+      analyzeResults.textContent = "";
+      const city = document.getElementById("city").value.trim();
+      const state = document.getElementById("state").value.trim();
+      const includePhotos = document.getElementById("photos").checked;
+
+      if (!city || !state) {
+        analyzeStatus.textContent = "";
+        renderError(analyzeResults, "City and state are required.");
+        return;
+      }
+
+      analyzeStatus.textContent = "Running analysis...";
+      try {
+        const params = new URLSearchParams({
+          city,
+          state,
+          include_photos: String(includePhotos),
+        });
+        const response = await fetch(`/analyze?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          analyzeStatus.textContent = "Found 0 analyzed listing(s).";
+          renderMutedMessage(analyzeResults, "No listings returned.");
+          return;
+        }
+        analyzeStatus.textContent = `Found ${data.length} analyzed listing(s).`;
+        renderListingCards(analyzeResults, data);
+      } catch (err) {
+        analyzeStatus.textContent = "";
+        renderError(analyzeResults, `Analyze failed: ${err.message}`);
+      }
+    });
+
+    loadListingsBtn.addEventListener("click", async () => {
+      listingsResults.textContent = "";
+      listingsStatus.textContent = "Loading saved listings...";
+      try {
+        const response = await fetch("/listings");
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+        const data = await response.json();
+        const listings = data.listings || [];
+        if (!listings.length) {
+          listingsStatus.textContent = "Loaded 0 saved listing(s).";
+          renderMutedMessage(listingsResults, "No saved listings yet.");
+          return;
+        }
+        listingsStatus.textContent = `Loaded ${listings.length} saved listing(s).`;
+        renderListingCards(listingsResults, listings);
+      } catch (err) {
+        listingsStatus.textContent = "";
+        renderError(listingsResults, `Load failed: ${err.message}`);
+      }
+    });
+  </script>
+</body>
+</html>
