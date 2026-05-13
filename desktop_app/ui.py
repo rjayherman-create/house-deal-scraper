@@ -1,3 +1,4 @@
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -52,6 +53,12 @@ class MainWindow(QWidget):
         self.analysis_box.setReadOnly(True)
         layout.addWidget(self.analysis_box)
 
+    def set_busy(self, busy: bool, message: str):
+        self.analyze_button.setEnabled(not busy)
+        self.saved_button.setEnabled(not busy)
+        if message:
+            self.analysis_box.setText(message)
+
     def on_analyze_market(self):
         city = self.city_input.text().strip()
         state = self.state_input.text().strip()
@@ -59,14 +66,29 @@ class MainWindow(QWidget):
             self.analysis_box.setText("City and state are required.")
             return
 
-        self.results = analyze_market(city, state)
-        self.populate_table()
-        self.analysis_box.setText("Analysis complete. Select a row to view details.")
+        self.set_busy(True, "Running analysis...")
+        self.worker = ListingsWorker("analyze", city, state)
+        self.worker.finished.connect(self.on_results_loaded)
+        self.worker.error.connect(self.on_error)
+        self.worker.start()
 
     def on_load_saved(self):
         city = self.city_input.text().strip()
         state = self.state_input.text().strip()
-        saved_listings = fetch_saved_listings(city, state)
+        self.set_busy(True, "Loading saved listings...")
+        self.worker = ListingsWorker("saved", city, state)
+        self.worker.finished.connect(self.on_saved_loaded)
+        self.worker.error.connect(self.on_error)
+        self.worker.start()
+
+    def on_results_loaded(self, results: list):
+        self.set_busy(False, "")
+        self.results = results
+        self.populate_table()
+        self.analysis_box.setText("Analysis complete. Select a row to view details.")
+
+    def on_saved_loaded(self, saved_listings: list):
+        self.set_busy(False, "")
         self.results = [
             {
                 "listing": {
@@ -87,6 +109,9 @@ class MainWindow(QWidget):
         ]
         self.populate_table()
         self.analysis_box.setText("Saved listings loaded. Select a row to view details.")
+
+    def on_error(self, message: str):
+        self.set_busy(False, f"Error: {message}")
 
     def populate_table(self):
         self.table.setRowCount(len(self.results))
@@ -120,3 +145,24 @@ class MainWindow(QWidget):
             f"Comp Notes: {comp_analysis.get('notes', '')}"
         )
         self.analysis_box.setText(text)
+
+
+class ListingsWorker(QThread):
+    finished = Signal(list)
+    error = Signal(str)
+
+    def __init__(self, mode: str, city: str, state: str):
+        super().__init__()
+        self.mode = mode
+        self.city = city
+        self.state = state
+
+    def run(self):
+        try:
+            if self.mode == "analyze":
+                payload = analyze_market(self.city, self.state)
+            else:
+                payload = fetch_saved_listings(self.city, self.state)
+            self.finished.emit(payload)
+        except Exception as exc:
+            self.error.emit(str(exc))
