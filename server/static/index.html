@@ -108,8 +108,8 @@
           State
           <input id="state" type="text" placeholder="MI" maxlength="2" />
         </label>
-        <input id="photos" type="checkbox" />
         <label class="inline" for="photos">Include photos</label>
+        <input id="photos" type="checkbox" />
         <button id="analyzeBtn">Run Analyze</button>
       </div>
       <p id="analyzeStatus" class="muted"></p>
@@ -192,7 +192,7 @@
     }
 
     analyzeBtn.addEventListener("click", async () => {
-      analyzeResults.innerHTML = "";
+      analyzeResults.textContent = "";
       const city = document.getElementById("city").value.trim();
       const state = document.getElementById("state").value.trim();
       const includePhotos = document.getElementById("photos").checked;
@@ -229,7 +229,7 @@
     });
 
     loadListingsBtn.addEventListener("click", async () => {
-      listingsResults.innerHTML = "";
+      listingsResults.textContent = "";
       listingsStatus.textContent = "Loading saved listings...";
       try {
         const response = await fetch("/listings");
