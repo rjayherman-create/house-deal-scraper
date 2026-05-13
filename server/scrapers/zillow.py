@@ -10,11 +10,14 @@ def fetch_zillow(city, state, limit):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         city_slug = city.strip().lower().replace(" ", "-")
-        state_slug = state.strip().lower()
+        state_upper = state.strip().upper()
+        state_lower = state.strip().lower()
         candidate_urls = [
-            f"https://www.zillow.com/homes/for_sale/{city_slug}-{state_slug}/",
-            f"https://www.zillow.com/homes/{city_slug}-{state_slug}_rb/",
-            f"https://www.zillow.com/homes/{city_slug}_{state_slug}_rb/",
+            f"https://www.zillow.com/homes/for_sale/{city_slug}-{state_upper}/",
+            f"https://www.zillow.com/homes/{city_slug}-{state_upper}_rb/",
+            f"https://www.zillow.com/homes/{city_slug}-{state_lower}_rb/",
+            f"https://www.zillow.com/homes/{city_slug}_{state_upper}_rb/",
+            f"https://www.zillow.com/homes/{city_slug}_{state_lower}_rb/",
         ]
 
         for url in candidate_urls:

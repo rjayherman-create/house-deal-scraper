@@ -8,10 +8,12 @@ def fetch_craigslist(city, state, limit):
     Pulls title + price from result rows.
     """
     try:
-        city_slug = re.sub(r"[^a-z0-9]", "", city.lower())
+        city_slug_hyphen = re.sub(r"[^a-z0-9]+", "-", city.lower()).strip("-")
+        city_slug_compact = re.sub(r"[^a-z0-9]", "", city.lower())
         query = f"{city} {state}".strip()
         candidate_urls = [
-            f"https://{city_slug}.craigslist.org/search/rea",
+            f"https://{city_slug_hyphen}.craigslist.org/search/rea",
+            f"https://{city_slug_compact}.craigslist.org/search/rea",
             f"https://www.craigslist.org/search/rea?query={query.replace(' ', '+')}",
         ]
 
