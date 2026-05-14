@@ -14,6 +14,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Mapping, Optional
+from urllib.parse import quote_plus
 
 from sqlalchemy import (
     JSON,
@@ -70,6 +71,9 @@ properties = Table(
     Column("ai_summary", Text),
     Column("status", String(80), default="SCRAPED"),
     Column("source_listing_id", Integer),
+    Column("source_url", Text),
+    Column("photos", JSON),
+    Column("links", JSON),
     Column("created_at", DateTime, default=datetime.utcnow),
     Column("updated_at", DateTime, default=datetime.utcnow),
 )
@@ -168,6 +172,9 @@ PROPERTY_SYSTEM_COLUMNS: dict[str, dict[str, str]] = {
         "ai_summary": "TEXT",
         "status": "VARCHAR(80)",
         "source_listing_id": "INTEGER",
+        "source_url": "TEXT",
+        "photos": "JSONB",
+        "links": "JSONB",
         "created_at": "TIMESTAMP",
         "updated_at": "TIMESTAMP",
     },
@@ -219,6 +226,8 @@ def ensure_property_system_columns(engine: Engine) -> None:
                 }
                 for column_name, column_type in columns.items():
                     if column_name not in existing:
+                        if column_type == "JSONB":
+                            column_type = "JSON"
                         conn.exec_driver_sql(
                             f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
                         )
@@ -272,6 +281,73 @@ def _jsonable(value: Any) -> Any:
 
 def _row_to_dict(row: RowMapping[str, Any]) -> dict[str, Any]:
     return {key: _jsonable(value) for key, value in row.items()}
+
+
+def build_property_links(
+    address: Optional[str],
+    city: Optional[str],
+    state: Optional[str],
+    source_url: Optional[str] = None,
+) -> dict[str, str]:
+    query = " ".join(part for part in [address, city, state] if part)
+    encoded = quote_plus(query)
+    city_state = quote_plus(" ".join(part for part in [city, state] if part))
+    links = {
+        "zillow": f"https://www.zillow.com/homes/{encoded}_rb/",
+        "realtor": f"https://www.realtor.com/realestateandhomes-search/{encoded}",
+        "redfin": f"https://www.redfin.com/homes-for-sale#!search_location={encoded}",
+        "googleMaps": f"https://www.google.com/maps/search/?api=1&query={encoded}",
+    }
+    if city_state:
+        links["realtorMarket"] = f"https://www.realtor.com/realestateandhomes-search/{city_state}"
+    if source_url:
+        links["source"] = source_url
+    return links
+
+
+def extract_photo_urls(value: Any, limit: int = 20) -> list[str]:
+    photos: list[str] = []
+    seen = set()
+    image_keys = {
+        "photo",
+        "photos",
+        "image",
+        "images",
+        "imageurl",
+        "imageurls",
+        "photourl",
+        "photourls",
+        "href",
+        "url",
+        "src",
+        "small",
+        "medium",
+        "large",
+    }
+
+    def visit(node: Any, key_hint: str = "") -> None:
+        if len(photos) >= limit:
+            return
+        normalized_key = key_hint.lower().replace("_", "").replace("-", "")
+        if isinstance(node, str):
+            if (
+                node.startswith("http")
+                and (normalized_key in image_keys or any(token in node.lower() for token in [".jpg", ".jpeg", ".png", ".webp", "photos", "image"]))
+                and node not in seen
+            ):
+                seen.add(node)
+                photos.append(node)
+            return
+        if isinstance(node, list):
+            for item in node:
+                visit(item, key_hint)
+            return
+        if isinstance(node, Mapping):
+            for key, child in node.items():
+                visit(child, str(key))
+
+    visit(value)
+    return photos
 
 
 def calculate_deal_score(property_data: Mapping[str, Any]) -> int:
@@ -334,10 +410,15 @@ def build_ai_summary(property_data: Mapping[str, Any], deal_score: int) -> str:
 
 
 def _property_values(data: Mapping[str, Any], deal_score: int, ai_summary: str) -> dict[str, Any]:
+    address = _first(data, "address", "propertyAddress") or "Unknown address"
+    city = _first(data, "city")
+    state = _first(data, "state")
+    source_url = _first(data, "sourceUrl", "source_url", "listingUrl", "url")
+    photos = data.get("photos") if isinstance(data.get("photos"), list) else extract_photo_urls(data)
     return {
-        "address": _first(data, "address", "propertyAddress") or "Unknown address",
-        "city": _first(data, "city"),
-        "state": _first(data, "state"),
+        "address": address,
+        "city": city,
+        "state": state,
         "zip": _first(data, "zip", "zipCode", "zip_code"),
         "county": _first(data, "county"),
         "parcel_id": _first(data, "parcelId", "parcel_id", "apn"),
@@ -361,6 +442,9 @@ def _property_values(data: Mapping[str, Any], deal_score: int, ai_summary: str) 
         "ai_summary": ai_summary,
         "status": _first(data, "status") or "SCRAPED",
         "source_listing_id": _int(_first(data, "sourceListingId", "source_listing_id")),
+        "source_url": source_url,
+        "photos": photos[:20],
+        "links": build_property_links(address, city, state, source_url),
         "updated_at": datetime.utcnow(),
     }
 
@@ -424,6 +508,8 @@ def ingest_property_from_analysis(analysis: Any, source_listing_id: Optional[int
         "estimatedRent": _estimate_from(raw, "rent_estimate"),
         "taxAmountDue": _first(property_record, "taxAmountDue", "tax_amount_due"),
         "ownerName": _first(property_record, "ownerName", "owner_name"),
+        "sourceUrl": _first(raw, "source_url", "url", "listingUrl"),
+        "photos": listing.photos or extract_photo_urls(raw),
         "vacant": _first(raw, "vacant") or False,
         "foreclosure": _first(raw, "foreclosure") or False,
         "taxDelinquent": _first(raw, "taxDelinquent", "tax_delinquent") or False,
@@ -471,8 +557,17 @@ def get_property_detail(property_id: int) -> dict[str, Any]:
             .all()
         )
 
+    property_data = _row_to_dict(property_row) if property_row else None
+    if property_data:
+        property_data["links"] = property_data.get("links") or build_property_links(
+            property_data.get("address"),
+            property_data.get("city"),
+            property_data.get("state"),
+            property_data.get("source_url"),
+        )
+        property_data["photos"] = property_data.get("photos") or []
     return {
-        "property": _row_to_dict(property_row) if property_row else None,
+        "property": property_data,
         "snapshots": [_row_to_dict(row) for row in snapshots],
         "notes": [_row_to_dict(row) for row in notes],
     }

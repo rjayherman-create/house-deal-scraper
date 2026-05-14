@@ -256,7 +256,8 @@
       const priceText = Number.isFinite(price) ? `$${price.toLocaleString()}` : "N/A";
       const cityState = [l.city, l.state].filter(Boolean).join(", ");
       const photos = l.photos || item.photos || [];
-      const sourceUrl = l.source_url || raw.source_url || item.source_url;
+      const links = l.links || item.links || {};
+      const sourceUrl = l.source_url || raw.source_url || item.source_url || links.source;
       const propertyId = l.property_intelligence_id || (Number.isFinite(l.deal_score) ? l.id : null);
       const card = document.createElement("div");
       card.className = "result-card";
@@ -322,9 +323,10 @@
       }
       const searchQuery = encodeURIComponent([l.address, l.city, l.state].filter(Boolean).join(" "));
       const searchLinks = [
-        ["Zillow", `https://www.zillow.com/homes/${searchQuery}_rb/`],
-        ["Realtor", `https://www.realtor.com/realestateandhomes-search/${encodeURIComponent([l.city, l.state].filter(Boolean).join("_"))}`],
-        ["Redfin", `https://www.redfin.com/homes-for-sale#!search_location=${searchQuery}`],
+        ["Zillow", links.zillow || `https://www.zillow.com/homes/${searchQuery}_rb/`],
+        ["Realtor", links.realtor || `https://www.realtor.com/realestateandhomes-search/${searchQuery}`],
+        ["Redfin", links.redfin || `https://www.redfin.com/homes-for-sale#!search_location=${searchQuery}`],
+        ["Maps", links.googleMaps || `https://www.google.com/maps/search/?api=1&query=${searchQuery}`],
       ];
       for (const [label, href] of searchLinks) {
         const link = document.createElement("a");

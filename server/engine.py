@@ -522,41 +522,53 @@ def enrich_listing(listing: Listing) -> Listing:
     listing.sqft = listing.sqft or parse_optional_float(subject.get("squareFootage") or property_record.get("squareFootage"))
     listing.year_built = listing.year_built or subject.get("yearBuilt") or property_record.get("yearBuilt")
     listing.raw_data = merged_raw
+    if not listing.photos:
+        listing.photos = extract_photos(merged_raw, include_photos=True)
     return listing
 
-def extract_photos(raw: Dict[str, Any], include_photos: bool) -> List[str]:
+def extract_photos(raw: Dict[str, Any], include_photos: bool, limit: int = 12) -> List[str]:
     if not include_photos:
         return []
-    candidates = (
-        raw.get("photos")
-        or raw.get("photo_urls")
-        or raw.get("images")
-        or raw.get("image_urls")
-        or []
-    )
-    if isinstance(candidates, str):
-        candidates = [candidates]
-    if not isinstance(candidates, list):
-        return []
-
     photos = []
-    for item in candidates:
-        if isinstance(item, str):
-            url = item
-        elif isinstance(item, dict):
-            url = (
-                item.get("url")
-                or item.get("href")
-                or item.get("src")
-                or item.get("small")
-                or item.get("medium")
-                or item.get("large")
-            )
-        else:
-            url = None
-        if url and str(url).startswith("http"):
-            photos.append(str(url))
-    return photos[:12]
+    seen = set()
+    image_keys = {
+        "photo",
+        "photos",
+        "photourl",
+        "photourls",
+        "image",
+        "images",
+        "imageurl",
+        "imageurls",
+        "src",
+        "href",
+        "url",
+        "small",
+        "medium",
+        "large",
+    }
+
+    def visit(value: Any, key_hint: str = "") -> None:
+        if len(photos) >= limit:
+            return
+        normalized_key = key_hint.lower().replace("_", "").replace("-", "")
+        if isinstance(value, str):
+            lower = value.lower()
+            looks_like_image = any(token in lower for token in [".jpg", ".jpeg", ".png", ".webp", "photos", "image"])
+            if value.startswith("http") and (normalized_key in image_keys or looks_like_image) and value not in seen:
+                seen.add(value)
+                photos.append(value)
+            return
+        if isinstance(value, list):
+            for item in value:
+                visit(item, key_hint)
+            return
+        if isinstance(value, dict):
+            for key, child in value.items():
+                visit(child, str(key))
+
+    visit(raw)
+    return photos[:limit]
 
 
 def search_listings(
