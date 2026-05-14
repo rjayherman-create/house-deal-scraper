@@ -288,8 +288,22 @@ def build_property_links(
     city: Optional[str],
     state: Optional[str],
     source_url: Optional[str] = None,
+    zip_code: Optional[str] = None,
 ) -> dict[str, str]:
-    query = " ".join(part for part in [address, city, state] if part)
+    address_value = (address or "").strip()
+    city_value = (city or "").strip()
+    state_value = (state or "").strip()
+    zip_value = (zip_code or "").strip()
+    address_lower = address_value.lower()
+    address_already_has_location = (
+        bool(city_value and city_value.lower() in address_lower)
+        or bool(state_value and state_value.lower() in address_lower)
+    )
+    query = (
+        address_value
+        if address_already_has_location
+        else ", ".join(part for part in [address_value, city_value, state_value, zip_value] if part)
+    )
     encoded = quote_plus(query)
     city_state = quote_plus(" ".join(part for part in [city, state] if part))
     links = {
@@ -413,13 +427,14 @@ def _property_values(data: Mapping[str, Any], deal_score: int, ai_summary: str) 
     address = _first(data, "address", "propertyAddress") or "Unknown address"
     city = _first(data, "city")
     state = _first(data, "state")
+    zip_code = _first(data, "zip", "zipCode", "zip_code")
     source_url = _first(data, "sourceUrl", "source_url", "listingUrl", "url")
     photos = data.get("photos") if isinstance(data.get("photos"), list) else extract_photo_urls(data)
     return {
         "address": address,
         "city": city,
         "state": state,
-        "zip": _first(data, "zip", "zipCode", "zip_code"),
+        "zip": zip_code,
         "county": _first(data, "county"),
         "parcel_id": _first(data, "parcelId", "parcel_id", "apn"),
         "property_type": _first(data, "propertyType", "property_type"),
@@ -444,7 +459,7 @@ def _property_values(data: Mapping[str, Any], deal_score: int, ai_summary: str) 
         "source_listing_id": _int(_first(data, "sourceListingId", "source_listing_id")),
         "source_url": source_url,
         "photos": photos[:20],
-        "links": build_property_links(address, city, state, source_url),
+        "links": build_property_links(address, city, state, source_url, zip_code),
         "updated_at": datetime.utcnow(),
     }
 
@@ -564,6 +579,7 @@ def get_property_detail(property_id: int) -> dict[str, Any]:
             property_data.get("city"),
             property_data.get("state"),
             property_data.get("source_url"),
+            property_data.get("zip"),
         )
         property_data["photos"] = property_data.get("photos") or []
     return {

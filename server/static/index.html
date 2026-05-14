@@ -934,13 +934,24 @@
     }
 
     function propertyLinks(property) {
-      const query = encodeURIComponent([property.address, property.city, property.state, property.zip].filter(Boolean).join(" "));
+      const address = String(property.address || "").trim();
+      const city = String(property.city || "").trim();
+      const stateCode = String(property.state || "").trim();
+      const zip = String(property.zip || property.zip_code || "").trim();
+      const addressLower = address.toLowerCase();
+      const addressAlreadyIncludesLocation =
+        (city && addressLower.includes(city.toLowerCase())) ||
+        (stateCode && addressLower.includes(stateCode.toLowerCase()));
+      const exactAddress = addressAlreadyIncludesLocation
+        ? address
+        : [address, city, stateCode, zip].filter(Boolean).join(", ");
+      const query = encodeURIComponent(exactAddress);
       return {
         Source: property.sourceUrl || property.links?.source,
-        Zillow: property.links?.zillow || `https://www.zillow.com/homes/${query}_rb/`,
-        Realtor: property.links?.realtor || `https://www.realtor.com/realestateandhomes-search/${query}`,
-        Redfin: property.links?.redfin || `https://www.redfin.com/homes-for-sale#!search_location=${query}`,
-        Maps: property.links?.googleMaps || property.links?.maps || `https://www.google.com/maps/search/?api=1&query=${query}`,
+        Zillow: `https://www.zillow.com/homes/${query}_rb/`,
+        Realtor: `https://www.realtor.com/realestateandhomes-search/${query}`,
+        Redfin: `https://www.redfin.com/homes-for-sale#!search_location=${query}`,
+        Maps: `https://www.google.com/maps/search/?api=1&query=${query}`,
       };
     }
 
