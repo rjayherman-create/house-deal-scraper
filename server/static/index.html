@@ -642,6 +642,7 @@
         <button type="button" class="nav-btn active" data-tab="dashboard"><span class="nav-icon">D</span><span class="nav-label">Dashboard</span></button>
         <button type="button" class="nav-btn" data-tab="research"><span class="nav-icon">R</span><span class="nav-label">Research</span></button>
         <button type="button" class="nav-btn" data-tab="database"><span class="nav-icon">DB</span><span class="nav-label">Property Database</span></button>
+        <button type="button" class="nav-btn" data-tab="discovery"><span class="nav-icon">H</span><span class="nav-label">Deal Hunter</span></button>
         <button type="button" class="nav-btn" data-tab="ai"><span class="nav-icon">AI</span><span class="nav-label">AI Analyzer</span></button>
         <button type="button" class="nav-btn" data-tab="maps"><span class="nav-icon">M</span><span class="nav-label">Heat Maps</span></button>
         <button type="button" class="nav-btn" data-tab="alerts"><span class="nav-icon">A</span><span class="nav-label">Alerts</span></button>
@@ -806,6 +807,51 @@
         </div>
       </section>
 
+      <section id="tab-discovery" class="content tab-panel hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>AI Deal Hunter</h2>
+              <p>Find hidden markets, Section 8 arbitrage, low-competition zones, and cash-flow anomalies from the property database.</p>
+            </div>
+            <div class="actions">
+              <button id="runDiscoveryBtn" type="button">Run Discovery Scan</button>
+              <button id="loadMarketsBtn" type="button" class="secondary">Load Markets</button>
+            </div>
+          </div>
+          <div class="panel-pad">
+            <div id="discoveryStatus" class="status">Run the AI market scan to generate discoveries.</div>
+          </div>
+        </div>
+
+        <div class="grid stats-grid">
+          <div class="stat-card"><div class="stat-label">Emerging Markets</div><div id="discoveryMarketCount" class="stat-value">0</div><div class="stat-note">Markets scored by opportunity</div></div>
+          <div class="stat-card"><div class="stat-label">Discovery Alerts</div><div id="discoveryAlertCount" class="stat-value">0</div><div class="stat-note">AI-generated signals</div></div>
+          <div class="stat-card"><div class="stat-label">Top Score</div><div id="discoveryTopScore" class="stat-value">0</div><div class="stat-note">Best market opportunity</div></div>
+          <div class="stat-card"><div class="stat-label">Mode</div><div class="stat-value">MVP</div><div class="stat-note">Scrape, rent, score, discover</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Market Discovery</h2>
+              <p>ZIP and city-level opportunity scores derived from price, rent, Section 8 spread, competition, vacancy, and foreclosure signals.</p>
+            </div>
+          </div>
+          <div id="marketResults" class="source-grid"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>AI Discovery Alerts</h2>
+              <p>Investor-ready alerts for emerging markets, high cash-flow areas, foreclosure shifts, and Section 8 arbitrage.</p>
+            </div>
+          </div>
+          <div id="discoveryAlerts" class="source-grid"></div>
+        </div>
+      </section>
+
       <section id="tab-ai" class="content tab-panel hidden">
         <div class="panel">
           <div class="panel-header">
@@ -892,6 +938,7 @@
       dashboard: ["Dashboard", "Scraped property intelligence and operating metrics."],
       research: ["Research", "Run deal search with price filters, database results, live sources, and photo previews."],
       database: ["Property Database", "Search, expand, export, and manage scraped properties."],
+      discovery: ["AI Deal Hunter", "Discover hidden markets, cash-flow anomalies, and AI-ranked opportunities."],
       ai: ["AI Analyzer", "Photo-based rehab, condition, rent, and ARV analysis."],
       maps: ["Heat Maps", "Map-ready property intelligence and future overlay layers."],
       alerts: ["Alerts", "High-score candidate alerts and deal monitoring."],
@@ -1013,6 +1060,9 @@
       }
       if (tab === "database" && !state.dashboardItems.length) {
         $("listingsStatus").textContent = "Load listings or high-score deals to begin.";
+      }
+      if (tab === "discovery" && !$("marketResults").innerHTML.trim()) {
+        loadDiscovery();
       }
     }
 
@@ -1796,6 +1846,66 @@
       }
     }
 
+    function renderDiscovery(data) {
+      const markets = data.markets || data.data || [];
+      const alerts = data.alerts || [];
+      $("discoveryMarketCount").textContent = String(markets.length);
+      $("discoveryAlertCount").textContent = String(alerts.length);
+      $("discoveryTopScore").textContent = String(Math.round(Number(markets[0]?.opportunity_score || markets[0]?.score || 0)));
+      $("marketResults").innerHTML = markets.slice(0, 24).map((market) => `
+        <div class="source-card">
+          <strong>${escapeHtml([market.city, market.state, market.zip_code].filter(Boolean).join(", "))}</strong>
+          <span>Opportunity: ${escapeHtml(market.opportunity_score ?? "N/A")} | Cashflow: ${escapeHtml(market.cashflow_score ?? "N/A")}</span>
+          <span>Avg price ${escapeHtml(money(market.avg_price))} | Avg rent ${escapeHtml(money(market.avg_rent))} | Section 8 ${escapeHtml(money(market.avg_section8_rent))}</span>
+          <span>Competition ${escapeHtml(market.investor_activity_score ?? "N/A")} | Foreclosure ${escapeHtml(market.foreclosure_rate ?? "N/A")}% | Vacancy ${escapeHtml(market.vacancy_rate ?? "N/A")}%</span>
+        </div>
+      `).join("") || `<div class="empty-state">No markets scored yet.</div>`;
+      $("discoveryAlerts").innerHTML = alerts.slice(0, 24).map((alert) => {
+        const reasons = alert.payload?.reasons || [];
+        return `
+          <div class="source-card">
+            <strong>${escapeHtml(alert.title || "AI Discovery Alert")}</strong>
+            <span>${escapeHtml([alert.city, alert.state].filter(Boolean).join(", "))} | Score ${escapeHtml(alert.score ?? "N/A")}</span>
+            <span>${escapeHtml(alert.description || alert.alert_type || "Market opportunity detected")}</span>
+            <span>${escapeHtml(reasons.slice(0, 3).join(" | "))}</span>
+          </div>
+        `;
+      }).join("") || `<div class="empty-state">No discovery alerts yet.</div>`;
+    }
+
+    async function runDiscoveryScan() {
+      $("discoveryStatus").textContent = "Running AI market discovery scan...";
+      try {
+        const response = await fetch("/api/discovery/run", { method: "POST" });
+        if (!response.ok) {
+          const error = await response.json().catch(() => null);
+          throw new Error(error?.detail || `Discovery failed with ${response.status}`);
+        }
+        const data = await response.json();
+        renderDiscovery(data);
+        $("discoveryStatus").textContent = `Discovery complete: ${data.markets?.length || 0} markets scored, ${data.alerts?.length || 0} alerts generated.`;
+      } catch (err) {
+        showError($("marketResults"), `Could not run discovery: ${err.message}`);
+        $("discoveryStatus").textContent = "";
+      }
+    }
+
+    async function loadDiscovery() {
+      $("discoveryStatus").textContent = "Loading market discoveries...";
+      try {
+        const marketsResponse = await fetch("/api/markets/stats?limit=50");
+        const alertsResponse = await fetch("/api/discovery/alerts?limit=50");
+        if (!marketsResponse.ok || !alertsResponse.ok) throw new Error("Discovery API unavailable.");
+        const markets = await marketsResponse.json();
+        const alerts = await alertsResponse.json();
+        renderDiscovery({ markets: markets.data || [], alerts: alerts.data || [] });
+        $("discoveryStatus").textContent = `Loaded ${markets.count || 0} markets and ${alerts.count || 0} alerts.`;
+      } catch (err) {
+        showError($("marketResults"), `Could not load discovery data: ${err.message}`);
+        $("discoveryStatus").textContent = "";
+      }
+    }
+
     function setAllExpanded(value) {
       filteredDashboardItems().forEach((property) => {
         state.expanded[String(property.id || property.address)] = value;
@@ -1814,6 +1924,8 @@
     $("savedSearchesBtn").addEventListener("click", () => switchTab("dashboard"));
     $("refreshDataBtn").addEventListener("click", loadSources);
     $("settingsRefreshBtn").addEventListener("click", loadSources);
+    $("runDiscoveryBtn").addEventListener("click", runDiscoveryScan);
+    $("loadMarketsBtn").addEventListener("click", loadDiscovery);
     $("saveSearchBtn").addEventListener("click", saveCurrentSearch);
     $("analyzeBtn").addEventListener("click", runAnalyze);
     $("searchDatabaseBtn").addEventListener("click", async () => {

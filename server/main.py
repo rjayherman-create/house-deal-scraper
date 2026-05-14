@@ -16,6 +16,7 @@ from server.data_sources import has_primary_listing_source, serialize_data_sourc
 from server.engine import ListingAnalysis, fetch_detail_page_photos, search_listings, serialize_analysis
 from server.location_normalizer import normalize_location
 from server.low_cost_data_engine import analyze_low_cost_property, data_priority, rent_comps
+from server.market_discovery import get_discovery_alerts, get_market_stats, run_market_discovery
 from server.property_system import (
     add_property_note,
     add_to_watchlist,
@@ -338,6 +339,7 @@ async def root():
 @app.get("/database")
 @app.get("/ai")
 @app.get("/maps")
+@app.get("/discovery")
 @app.get("/alerts")
 @app.get("/crm")
 @app.get("/settings")
@@ -440,6 +442,49 @@ async def api_rent_comps(data: dict):
 @app.get("/api/data-priority")
 async def api_data_priority():
     return data_priority()
+
+
+@app.get("/api/markets/stats")
+async def api_market_stats(limit: int = Query(50, ge=1, le=250)):
+    try:
+        rows = await run_in_threadpool(get_market_stats, limit)
+        if not rows:
+            discovery = await run_in_threadpool(run_market_discovery)
+            rows = discovery.get("markets", [])[:limit]
+        return {
+            "success": True,
+            "count": len(rows),
+            "data": rows,
+        }
+    except Exception as exc:
+        logger.exception("market stats lookup failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/discovery/run")
+async def api_run_discovery():
+    try:
+        return await run_in_threadpool(run_market_discovery)
+    except Exception as exc:
+        logger.exception("market discovery failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/discovery/alerts")
+async def api_discovery_alerts(limit: int = Query(50, ge=1, le=250)):
+    try:
+        rows = await run_in_threadpool(get_discovery_alerts, limit)
+        if not rows:
+            discovery = await run_in_threadpool(run_market_discovery)
+            rows = discovery.get("alerts", [])[:limit]
+        return {
+            "success": True,
+            "count": len(rows),
+            "data": rows,
+        }
+    except Exception as exc:
+        logger.exception("discovery alert lookup failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post("/api/properties/ingest")
