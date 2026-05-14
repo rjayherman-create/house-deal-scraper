@@ -744,6 +744,8 @@
           <div class="panel-pad grid search-grid">
             <label>City<input id="city" type="text" placeholder="Peoria" autocomplete="address-level2" /></label>
             <label>State<input id="state" type="text" maxlength="2" placeholder="IL" autocomplete="address-level1" /></label>
+            <label>County<input id="county" type="text" placeholder="Wayne" autocomplete="off" /></label>
+            <label>ZIP Code<input id="zipCode" type="text" placeholder="48206" inputmode="numeric" autocomplete="postal-code" /></label>
             <label>Maximum Price<input id="maxPrice" type="number" min="0" step="1000" placeholder="150000" /></label>
             <label>Photos<select id="photos"><option value="true">Include photos</option><option value="false">No photos</option></select></label>
             <button id="analyzeBtn" type="button">Run Deal Search</button>
@@ -785,7 +787,10 @@
             </div>
           </div>
           <div class="panel-pad grid filter-grid">
-            <label>Search<input id="dashboardSearch" type="text" placeholder="Address, city, county" /></label>
+            <label>Search<input id="dashboardSearch" type="text" placeholder="Address, city, county, ZIP" /></label>
+            <label>State<input id="dashboardState" type="text" maxlength="2" placeholder="MI" /></label>
+            <label>County<input id="dashboardCounty" type="text" placeholder="Wayne" /></label>
+            <label>ZIP<input id="dashboardZip" type="text" placeholder="48206" inputmode="numeric" /></label>
             <label>Min Score<select id="dashboardScore"><option value="0">All Scores</option><option value="50">50+</option><option value="70">70+</option><option value="85">85+</option></select></label>
             <label>Sort<select id="dashboardSort"><option value="score">Deal score</option><option value="cashflow">Highest cash flow</option><option value="caprate">Highest cap rate</option><option value="yield">Highest gross yield</option><option value="confidence">Strongest rent confidence</option><option value="newest">Newest</option><option value="price">Price/value</option></select></label>
             <button id="expandAllBtn" type="button" class="secondary">Expand All</button>
@@ -1032,11 +1037,18 @@
 
     function filteredDashboardItems() {
       const term = ($("dashboardSearch").value || "").toLowerCase();
+      const stateFilter = ($("dashboardState").value || "").trim().toLowerCase();
+      const countyFilter = ($("dashboardCounty").value || "").trim().toLowerCase();
+      const zipFilter = ($("dashboardZip").value || "").trim().toLowerCase();
       const minScore = Number($("dashboardScore").value || 0);
       const sort = $("dashboardSort").value || "score";
       const rows = state.dashboardItems.map(normalizeProperty).filter((p) => {
         const haystack = [p.address, p.city, p.state, p.county, p.zip].filter(Boolean).join(" ").toLowerCase();
-        return haystack.includes(term) && p.dealScore >= minScore;
+        const matchesTerm = haystack.includes(term);
+        const matchesState = !stateFilter || String(p.state || "").toLowerCase() === stateFilter;
+        const matchesCounty = !countyFilter || String(p.county || "").toLowerCase().includes(countyFilter);
+        const matchesZip = !zipFilter || String(p.zip || "").toLowerCase().includes(zipFilter);
+        return matchesTerm && matchesState && matchesCounty && matchesZip && p.dealScore >= minScore;
       });
       rows.sort((a, b) => {
         if (sort === "newest") return String(b.created_at || b.createdAt || "").localeCompare(String(a.created_at || a.createdAt || ""));
@@ -1520,7 +1532,7 @@
         item.className = "saved-item";
         item.innerHTML = `
           <div>
-            <strong>${escapeHtml(search.city)}, ${escapeHtml(search.state)}</strong>
+            <strong>${escapeHtml([search.city, search.county, search.state, search.zipCode].filter(Boolean).join(", ") || "Saved search")}</strong>
             <span>Max ${escapeHtml(search.maxPrice ? money(search.maxPrice) : "Any price")} - Photos ${escapeHtml(search.photos === "true" ? "on" : "off")}</span>
           </div>
         `;
@@ -1530,6 +1542,8 @@
         run.addEventListener("click", () => {
           $("city").value = search.city;
           $("state").value = search.state;
+          $("county").value = search.county || "";
+          $("zipCode").value = search.zipCode || "";
           $("maxPrice").value = search.maxPrice || "";
           $("photos").value = search.photos || "true";
           switchTab("research");
@@ -1552,18 +1566,26 @@
     function saveCurrentSearch() {
       const city = $("city").value.trim();
       const stateCode = $("state").value.trim().toUpperCase();
-      if (!city || !stateCode) {
-        $("analyzeStatus").textContent = "Enter a city and state before saving a search.";
+      const county = $("county").value.trim();
+      const zipCode = $("zipCode").value.trim();
+      if (!city && !stateCode && !county && !zipCode) {
+        $("analyzeStatus").textContent = "Enter a city, state, county, or ZIP before saving a search.";
         return;
       }
       const search = {
         city,
         state: stateCode,
+        county,
+        zipCode,
         maxPrice: $("maxPrice").value.trim(),
         photos: $("photos").value,
         createdAt: new Date().toISOString(),
       };
-      state.savedSearches = [search, ...state.savedSearches.filter((item) => !(item.city.toLowerCase() === city.toLowerCase() && item.state.toUpperCase() === stateCode))].slice(0, 12);
+      const searchKey = [city.toLowerCase(), stateCode, county.toLowerCase(), zipCode].join("|");
+      state.savedSearches = [
+        search,
+        ...state.savedSearches.filter((item) => [String(item.city || "").toLowerCase(), String(item.state || "").toUpperCase(), String(item.county || "").toLowerCase(), String(item.zipCode || "")].join("|") !== searchKey),
+      ].slice(0, 12);
       persistSavedSearches();
       $("analyzeStatus").textContent = "Search saved.";
     }
@@ -1571,12 +1593,16 @@
     function researchParams(mode) {
       const city = $("city").value.trim();
       const stateCode = $("state").value.trim();
+      const county = $("county").value.trim();
+      const zipCode = $("zipCode").value.trim();
       const query = $("researchQuery").value.trim();
       const maxPrice = $("maxPrice").value.trim();
       const minScore = $("researchMinScore").value;
       const params = new URLSearchParams({ mode });
       if (city) params.set("city", city);
       if (stateCode) params.set("state", stateCode);
+      if (county) params.set("county", county);
+      if (zipCode) params.set("zip", zipCode);
       if (query) params.set("q", query);
       if (maxPrice) params.set("max_price", maxPrice);
       if (minScore) params.set("min_score", minScore);
@@ -1588,10 +1614,10 @@
       const params = researchParams(mode);
       const hasCity = params.has("city");
       const hasState = params.has("state");
-      const hasDatabaseInput = params.has("q") || params.has("max_price") || params.has("min_score") || hasCity || hasState;
+      const hasDatabaseInput = params.has("q") || params.has("max_price") || params.has("min_score") || params.has("county") || params.has("zip") || hasCity || hasState;
       if (mode !== "database" && (!hasCity || !hasState)) {
-        $("analyzeStatus").textContent = "City and state are required for live research.";
-        return [];
+        params.set("mode", "database");
+        mode = "database";
       }
       if (mode === "database" && !hasDatabaseInput) {
         $("analyzeStatus").textContent = "Enter a city, state, address, county, zip, parcel, price, or score to search the database.";
@@ -1638,7 +1664,18 @@
     async function loadListings() {
       $("listingsStatus").textContent = "Loading property intelligence database...";
       try {
-        const response = await fetch("/api/properties/search?limit=500");
+        const params = new URLSearchParams({ limit: "500" });
+        const stateFilter = $("dashboardState").value.trim();
+        const countyFilter = $("dashboardCounty").value.trim();
+        const zipFilter = $("dashboardZip").value.trim();
+        const searchTerm = $("dashboardSearch").value.trim();
+        const minScore = $("dashboardScore").value;
+        if (stateFilter) params.set("state", stateFilter);
+        if (countyFilter) params.set("county", countyFilter);
+        if (zipFilter) params.set("zip", zipFilter);
+        if (searchTerm) params.set("q", searchTerm);
+        if (minScore && minScore !== "0") params.set("min_score", minScore);
+        const response = await fetch(`/api/properties/search?${params.toString()}`);
         if (!response.ok) {
           const error = await response.json().catch(() => null);
           throw new Error(error?.detail || `Property database failed with ${response.status}`);
@@ -1794,6 +1831,9 @@
     $("dashboardLoadListingsBtn").addEventListener("click", loadListings);
     $("dashboardLoadDealsBtn").addEventListener("click", loadHighDeals);
     $("dashboardSearch").addEventListener("input", renderDashboard);
+    $("dashboardState").addEventListener("input", renderDashboard);
+    $("dashboardCounty").addEventListener("input", renderDashboard);
+    $("dashboardZip").addEventListener("input", renderDashboard);
     $("dashboardScore").addEventListener("change", renderDashboard);
     $("dashboardSort").addEventListener("change", renderDashboard);
     $("expandAllBtn").addEventListener("click", () => setAllExpanded(true));

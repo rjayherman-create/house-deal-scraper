@@ -579,6 +579,8 @@ def get_high_deals(limit: int = 100) -> list[dict[str, Any]]:
 def search_properties(
     city: Optional[str] = None,
     state: Optional[str] = None,
+    county: Optional[str] = None,
+    zip_code: Optional[str] = None,
     query: Optional[str] = None,
     max_price: Optional[float] = None,
     min_score: Optional[int] = None,
@@ -590,6 +592,10 @@ def search_properties(
         clauses.append(properties.c.city.ilike(city))
     if state:
         clauses.append(properties.c.state.ilike(state))
+    if county:
+        clauses.append(properties.c.county.ilike(f"%{county}%"))
+    if zip_code:
+        clauses.append(properties.c.zip.ilike(f"%{zip_code}%"))
     if query:
         term = f"%{query}%"
         clauses.append(
