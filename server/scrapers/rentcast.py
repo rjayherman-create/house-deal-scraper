@@ -11,11 +11,11 @@ RENTCAST_BASE_URL = os.getenv("RENTCAST_API_BASE_URL", "https://api.rentcast.io/
 
 
 def is_rentcast_enabled() -> bool:
-    return bool(os.getenv("RENTCAST_API_KEY"))
+    return bool((os.getenv("RENTCAST_API_KEY") or "").strip())
 
 
 def _request(path: str, params: Dict[str, Any]) -> Any:
-    api_key = os.getenv("RENTCAST_API_KEY")
+    api_key = (os.getenv("RENTCAST_API_KEY") or "").strip()
     if not api_key:
         return None
 
@@ -41,7 +41,7 @@ def _payload_rows(payload: Any) -> List[Dict[str, Any]]:
 
 
 def check_rentcast(city: str = "Detroit", state: str = "MI") -> Dict[str, Any]:
-    api_key = os.getenv("RENTCAST_API_KEY")
+    api_key = (os.getenv("RENTCAST_API_KEY") or "").strip()
     if not api_key:
         return {
             "enabled": False,

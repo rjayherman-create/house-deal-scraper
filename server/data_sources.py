@@ -16,7 +16,7 @@ class DataSourceStatus:
 
 
 def _enabled(env_var: Optional[str]) -> bool:
-    return bool(env_var and os.getenv(env_var))
+    return bool(env_var and (os.getenv(env_var) or "").strip())
 
 
 def get_data_sources() -> List[DataSourceStatus]:
