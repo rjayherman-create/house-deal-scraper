@@ -746,7 +746,14 @@
             <label>State<input id="state" type="text" maxlength="2" placeholder="IL" autocomplete="address-level1" /></label>
             <label>Maximum Price<input id="maxPrice" type="number" min="0" step="1000" placeholder="150000" /></label>
             <label>Photos<select id="photos"><option value="true">Include photos</option><option value="false">No photos</option></select></label>
-            <button id="analyzeBtn" type="button">Run Analysis</button>
+            <button id="analyzeBtn" type="button">Run Live Analysis</button>
+          </div>
+          <div class="panel-pad grid search-grid" style="padding-top:0">
+            <label>Database Search<input id="researchQuery" type="text" placeholder="Address, county, zip, parcel" /></label>
+            <label>Min Score<select id="researchMinScore"><option value="">Any Score</option><option value="50">50+</option><option value="70">70+</option><option value="85">85+</option></select></label>
+            <div></div>
+            <button id="searchDatabaseBtn" type="button" class="secondary">Search Database</button>
+            <button id="searchBothBtn" type="button" class="success">Database + Live</button>
           </div>
           <div class="panel-pad" style="padding-top:0">
             <div id="analyzeStatus" class="status"></div>
@@ -757,7 +764,7 @@
           <div class="panel-header">
             <div>
               <h2>Scraped Property Results</h2>
-              <p>Expand listings to view property intelligence, photos, source links, CRM actions, and notes.</p>
+              <p>Results can come from saved database records, live scraping, or both.</p>
             </div>
           </div>
           <div id="analyzeResults" class="empty-state">Run a search to see scraped properties.</div>
@@ -1461,6 +1468,49 @@
       }
     }
 
+    async function searchResearchDatabase({ append = false } = {}) {
+      const city = $("city").value.trim();
+      const stateCode = $("state").value.trim();
+      const query = $("researchQuery").value.trim();
+      const maxPrice = $("maxPrice").value.trim();
+      const minScore = $("researchMinScore").value;
+      if (!city && !stateCode && !query && !maxPrice && !minScore) {
+        $("analyzeStatus").textContent = "Enter a city, state, address, county, zip, parcel, price, or score to search the database.";
+        return [];
+      }
+      $("analyzeStatus").textContent = "Searching saved property database...";
+      $("analyzeResults").className = "empty-state";
+      $("analyzeResults").textContent = "Searching database records...";
+      const params = new URLSearchParams();
+      if (city) params.set("city", city);
+      if (stateCode) params.set("state", stateCode);
+      if (query) params.set("q", query);
+      if (maxPrice) params.set("max_price", maxPrice);
+      if (minScore) params.set("min_score", minScore);
+      const response = await fetch(`/api/properties/search?${params.toString()}`);
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.detail || `Database search failed with ${response.status}`);
+      }
+      const data = await response.json();
+      const rows = data.data || [];
+      state.dashboardItems = append ? [...rows, ...state.dashboardItems] : rows;
+      state.expanded = {};
+      updateStats(state.dashboardItems);
+      $("analyzeStatus").textContent = `Found ${rows.length} saved database propert${rows.length === 1 ? "y" : "ies"}.`;
+      renderPropertyList($("analyzeResults"), state.dashboardItems, "No saved database properties matched this search.");
+      return rows;
+    }
+
+    async function searchDatabaseAndLive() {
+      try {
+        await searchResearchDatabase();
+      } catch (err) {
+        $("analyzeStatus").textContent = `Database search failed: ${err.message}. Running live analysis next...`;
+      }
+      await runAnalyze();
+    }
+
     async function loadListings() {
       $("listingsStatus").textContent = "Loading saved listings...";
       try {
@@ -1580,6 +1630,15 @@
     $("settingsRefreshBtn").addEventListener("click", loadSources);
     $("saveSearchBtn").addEventListener("click", saveCurrentSearch);
     $("analyzeBtn").addEventListener("click", runAnalyze);
+    $("searchDatabaseBtn").addEventListener("click", async () => {
+      try {
+        await searchResearchDatabase();
+      } catch (err) {
+        $("analyzeStatus").textContent = "";
+        showError($("analyzeResults"), `Database search failed: ${err.message}`);
+      }
+    });
+    $("searchBothBtn").addEventListener("click", searchDatabaseAndLive);
     $("loadListingsBtn").addEventListener("click", loadListings);
     $("loadDealsBtn").addEventListener("click", loadHighDeals);
     $("dashboardLoadListingsBtn").addEventListener("click", loadListings);

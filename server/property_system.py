@@ -32,6 +32,7 @@ from sqlalchemy import (
     select,
     text as sql_text,
     update,
+    or_,
 )
 from sqlalchemy.engine import Engine, RowMapping
 
@@ -547,6 +548,44 @@ def get_high_deals(limit: int = 100) -> list[dict[str, Any]]:
             .mappings()
             .all()
         )
+    return [_row_to_dict(row) for row in rows]
+
+
+def search_properties(
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    query: Optional[str] = None,
+    max_price: Optional[float] = None,
+    min_score: Optional[int] = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    statement = select(properties)
+    clauses = []
+    if city:
+        clauses.append(properties.c.city.ilike(city))
+    if state:
+        clauses.append(properties.c.state.ilike(state))
+    if query:
+        term = f"%{query}%"
+        clauses.append(
+            or_(
+                properties.c.address.ilike(term),
+                properties.c.city.ilike(term),
+                properties.c.county.ilike(term),
+                properties.c.zip.ilike(term),
+                properties.c.parcel_id.ilike(term),
+            )
+        )
+    if max_price is not None:
+        clauses.append(properties.c.estimated_value <= max_price)
+    if min_score is not None:
+        clauses.append(properties.c.deal_score >= min_score)
+    for clause in clauses:
+        statement = statement.where(clause)
+    statement = statement.order_by(desc(properties.c.deal_score), desc(properties.c.updated_at)).limit(limit)
+
+    with get_property_engine().begin() as conn:
+        rows = conn.execute(statement).mappings().all()
     return [_row_to_dict(row) for row in rows]
 
 

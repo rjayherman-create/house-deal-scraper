@@ -25,6 +25,7 @@ from server.property_system import (
     ingest_property,
     ingest_property_from_analysis,
     init_property_system_db,
+    search_properties,
     update_property_status,
     update_property_photos,
 )
@@ -293,6 +294,35 @@ async def api_high_deals(limit: int = Query(100, ge=1, le=500)):
         }
     except Exception as exc:
         logger.exception("high deals lookup failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/properties/search")
+async def api_search_properties(
+    city: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, description="Address, county, zip, or parcel search"),
+    max_price: Optional[float] = Query(None, ge=0),
+    min_score: Optional[int] = Query(None, ge=0, le=100),
+    limit: int = Query(100, ge=1, le=500),
+):
+    try:
+        rows = await run_in_threadpool(
+            search_properties,
+            city,
+            state,
+            q,
+            max_price,
+            min_score,
+            limit,
+        )
+        return {
+            "success": True,
+            "count": len(rows),
+            "data": rows,
+        }
+    except Exception as exc:
+        logger.exception("property search failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
