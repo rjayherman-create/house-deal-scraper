@@ -14,6 +14,16 @@ from pathlib import Path
 from database import get_all_listings, init_db, upsert_listing
 from server.data_sources import has_primary_listing_source, serialize_data_sources
 from server.engine import ListingAnalysis, search_listings, serialize_analysis
+from server.property_system import (
+    add_property_note,
+    add_to_watchlist,
+    get_deal_alerts,
+    get_high_deals,
+    get_property_detail,
+    ingest_property,
+    ingest_property_from_analysis,
+    init_property_system_db,
+)
 from server.scrapers.craigslist import fetch_craigslist
 from server.scrapers.facebook import fetch_facebook
 from server.scrapers.realtor import fetch_realtor
@@ -49,6 +59,7 @@ UI_INDEX = STATIC_DIR / "index.html"
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    init_property_system_db()
 
 
 def persist_analysis(analysis: ListingAnalysis) -> dict:
@@ -64,6 +75,13 @@ def persist_analysis(analysis: ListingAnalysis) -> dict:
     )
     serialized["listing"]["id"] = saved_listing_id
     serialized["listing"]["zip_code"] = raw_listing.get("zip_code", "")
+    try:
+        property_record = ingest_property_from_analysis(analysis, saved_listing_id)
+        serialized["listing"]["property_intelligence_id"] = property_record.get("id")
+        serialized["listing"]["property_deal_score"] = property_record.get("deal_score")
+    except Exception as exc:
+        logger.exception("property intelligence ingest failed: %s", exc)
+        serialized["listing"]["property_intelligence_error"] = "Property intelligence ingest failed."
     return serialized
 
 
@@ -118,6 +136,98 @@ async def data_sources():
             if source["required_for_analysis"] and not source["enabled"]
         ],
     }
+
+
+@app.post("/api/properties/ingest")
+async def api_ingest_property(data: dict):
+    try:
+        property_record = await run_in_threadpool(ingest_property, data)
+        return {
+            "success": True,
+            "property": property_record,
+        }
+    except Exception as exc:
+        logger.exception("property ingest failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/properties/high-deals")
+async def api_high_deals(limit: int = Query(100, ge=1, le=500)):
+    try:
+        rows = await run_in_threadpool(get_high_deals, limit)
+        return {
+            "success": True,
+            "count": len(rows),
+            "data": rows,
+        }
+    except Exception as exc:
+        logger.exception("high deals lookup failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/properties/{property_id}")
+async def api_property_detail(property_id: int):
+    try:
+        detail = await run_in_threadpool(get_property_detail, property_id)
+        if not detail["property"]:
+            raise HTTPException(status_code=404, detail="Property not found")
+        return {
+            "success": True,
+            **detail,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("property detail lookup failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/watchlist/add")
+async def api_add_watchlist(data: dict):
+    try:
+        property_id = int(data.get("propertyId") or data.get("property_id"))
+        user_id = str(data.get("userId") or data.get("user_id") or "")
+        if not user_id:
+            raise ValueError("userId is required")
+        await run_in_threadpool(add_to_watchlist, property_id, user_id)
+        return {
+            "success": True,
+            "message": "Added to watchlist",
+        }
+    except Exception as exc:
+        logger.exception("watchlist add failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/properties/note")
+async def api_add_property_note(data: dict):
+    try:
+        property_id = int(data.get("propertyId") or data.get("property_id"))
+        user_id = data.get("userId") or data.get("user_id")
+        note = str(data.get("note") or "")
+        if not note:
+            raise ValueError("note is required")
+        await run_in_threadpool(add_property_note, property_id, user_id, note)
+        return {
+            "success": True,
+            "message": "Note added",
+        }
+    except Exception as exc:
+        logger.exception("property note add failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/deals/alerts")
+async def api_deal_alerts(min_score: int = Query(70, ge=0, le=100)):
+    try:
+        alerts = await run_in_threadpool(get_deal_alerts, min_score)
+        return {
+            "success": True,
+            "alerts": alerts,
+        }
+    except Exception as exc:
+        logger.exception("deal alerts lookup failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.get("/debug/scrapers")
