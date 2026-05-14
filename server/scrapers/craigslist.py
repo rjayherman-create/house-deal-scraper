@@ -1,5 +1,6 @@
 import logging
 import re
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -48,6 +49,7 @@ def fetch_craigslist(city, state, limit):
                         or post.select_one("a.cl-app-anchor")
                     )
                     price_el = post.select_one(".priceinfo")
+                    link_el = post.select_one("a[href]")
 
                     if not title_el or not price_el:
                         continue
@@ -62,6 +64,8 @@ def fetch_craigslist(city, state, limit):
                         "state": state,
                         "zip_code": "",
                         "asking_price": price_val,
+                        "source_url": urljoin(url, link_el.get("href")) if link_el else url,
+                        "photos": [],
                     })
 
                 if results:
@@ -77,6 +81,7 @@ def fetch_craigslist(city, state, limit):
             for post in legacy_posts:
                 title = post.select_one(".result-title")
                 price = post.select_one(".result-price")
+                image = post.select_one("a.result-image")
 
                 if not title or not price:
                     continue
@@ -91,6 +96,8 @@ def fetch_craigslist(city, state, limit):
                     "state": state,
                     "zip_code": "",
                     "asking_price": price_val,
+                    "source_url": title.get("href") or url,
+                    "photos": [image.get("data-ids", "").split(":")[-1]] if image and image.get("data-ids") else [],
                 })
 
             if results:

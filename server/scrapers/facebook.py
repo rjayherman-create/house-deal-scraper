@@ -1,5 +1,6 @@
 import logging
 import re
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -50,6 +51,8 @@ def fetch_facebook(city, state, limit):
                     "state": state,
                     "zip_code": "",
                     "asking_price": price_val,
+                    "source_url": urljoin("https://www.facebook.com", item.get("href")),
+                    "photos": [],
                 })
 
             if results:

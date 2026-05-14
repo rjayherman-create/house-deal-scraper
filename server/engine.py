@@ -524,7 +524,47 @@ def enrich_listing(listing: Listing) -> Listing:
     listing.raw_data = merged_raw
     return listing
 
-def search_listings(city: str, state: str, include_photos: bool = False) -> List[ListingAnalysis]:
+def extract_photos(raw: Dict[str, Any], include_photos: bool) -> List[str]:
+    if not include_photos:
+        return []
+    candidates = (
+        raw.get("photos")
+        or raw.get("photo_urls")
+        or raw.get("images")
+        or raw.get("image_urls")
+        or []
+    )
+    if isinstance(candidates, str):
+        candidates = [candidates]
+    if not isinstance(candidates, list):
+        return []
+
+    photos = []
+    for item in candidates:
+        if isinstance(item, str):
+            url = item
+        elif isinstance(item, dict):
+            url = (
+                item.get("url")
+                or item.get("href")
+                or item.get("src")
+                or item.get("small")
+                or item.get("medium")
+                or item.get("large")
+            )
+        else:
+            url = None
+        if url and str(url).startswith("http"):
+            photos.append(str(url))
+    return photos[:12]
+
+
+def search_listings(
+    city: str,
+    state: str,
+    include_photos: bool = False,
+    max_price: Optional[float] = None,
+) -> List[ListingAnalysis]:
     city, state, _ = normalize_location(city, state)
     listings_raw = []
     seen_listings = set()
@@ -573,6 +613,8 @@ def search_listings(city: str, state: str, include_photos: bool = False) -> List
                 price = parse_price(r.get("asking_price"))
                 if not address or price is None:
                     continue
+                if max_price is not None and price > max_price:
+                    continue
 
                 dedupe_key = (
                     source_name.lower(),
@@ -614,8 +656,8 @@ def search_listings(city: str, state: str, include_photos: bool = False) -> List
             baths=parse_optional_float(raw.get("baths")),
             sqft=parse_optional_float(raw.get("sqft")),
             year_built=raw.get("year_built"),
-            photos=[],
-            description="",
+            photos=extract_photos(raw, include_photos),
+            description=raw.get("description") or "",
             seller_contact=None,
             raw_data=raw
         )

@@ -74,6 +74,8 @@ def persist_analysis(analysis: ListingAnalysis) -> dict:
         zip_code=raw_listing.get("zip_code"),
         source=analysis.listing.source,
         asking_price=analysis.listing.price,
+        source_url=raw_listing.get("source_url"),
+        photos=analysis.listing.photos,
     )
     serialized["listing"]["id"] = saved_listing_id
     serialized["listing"]["zip_code"] = raw_listing.get("zip_code", "")
@@ -106,6 +108,7 @@ async def analyze(
     city: str = Query(..., description="City to search"),
     state: str = Query(..., description="State to search"),
     include_photos: bool = Query(False, description="Fetch photos from all sources"),
+    max_price: Optional[float] = Query(None, ge=0, description="Maximum asking price to include"),
 ):
     normalized_city, normalized_state, corrected = normalize_location(city, state)
     if corrected:
@@ -114,7 +117,7 @@ async def analyze(
             city, state, normalized_city, normalized_state,
         )
     try:
-        results = await run_in_threadpool(search_listings, normalized_city, normalized_state, include_photos)
+        results = await run_in_threadpool(search_listings, normalized_city, normalized_state, include_photos, max_price)
         logger.info(
             "analyze(%s, %s): %d listings returned",
             normalized_city, normalized_state, len(results),

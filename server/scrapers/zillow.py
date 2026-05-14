@@ -1,5 +1,6 @@
 import logging
 import re
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -54,6 +55,8 @@ def fetch_zillow(city, state, limit):
                     or card.select_one("[data-test='property-card-addr']")
                     or card.select_one("[data-test='property-card-address']")
                 )
+                link = card.select_one("a[href]")
+                image = card.select_one("img[src]")
 
                 if not price or not address:
                     continue
@@ -68,6 +71,8 @@ def fetch_zillow(city, state, limit):
                     "state": state,
                     "zip_code": "",
                     "asking_price": price_val,
+                    "source_url": urljoin("https://www.zillow.com", link.get("href")) if link else url,
+                    "photos": [image.get("src")] if image and image.get("src", "").startswith("http") else [],
                 })
 
             if results:

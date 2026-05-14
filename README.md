@@ -20,7 +20,7 @@ Useful production diagnostics:
 - `/data-sources` shows configured and missing data sources.
 - `/debug/live-data?city=Detroit&state=MI` tests the primary live API and explains missing key/auth/quota/zero-result issues.
 - `/debug/scrapers?city=Detroit&state=MI` tests each source and returns counts.
-- `/analyze?city=Detroit&state=MI` runs the full analysis pipeline.
+- `/analyze?city=Detroit&state=MI&max_price=150000&include_photos=true` runs the full analysis pipeline with optional price filtering and photos.
 - `/api/properties/high-deals` returns saved properties ordered by deal score.
 - `/api/deals/alerts` returns saved properties with deal scores at or above 70.
 - `/api/properties/{property_id}/status` updates a saved property's pipeline status.

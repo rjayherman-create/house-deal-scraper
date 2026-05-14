@@ -131,6 +131,12 @@ def fetch_redfin(city, state, limit):
                 "state": row.get("STATE OR PROVINCE") or state,
                 "zip_code": row.get("ZIP OR POSTAL CODE", ""),
                 "asking_price": asking_price,
+                "source_url": row.get("URL (SEE https://www.redfin.com/buy-a-home/comparative-market-analysis FOR INFO ON PRICING)") or row.get("URL") or "",
+                "photos": [row.get("IMAGE URL")] if row.get("IMAGE URL") else [],
+                "beds": row.get("BEDS"),
+                "baths": row.get("BATHS"),
+                "sqft": row.get("SQUARE FEET"),
+                "year_built": row.get("YEAR BUILT"),
             })
             if len(results) >= limit:
                 break

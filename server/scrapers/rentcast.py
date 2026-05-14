@@ -149,6 +149,7 @@ def _normalize_sale_listing(item: Dict[str, Any], city: str, state: str) -> Dict
             item.get("lastSalePrice"),
         )
     )
+    photos = item.get("photos") or item.get("images") or item.get("imageUrls") or []
     return {
         "address": _format_address(item, city, state),
         "city": item.get("city") or city,
@@ -162,6 +163,7 @@ def _normalize_sale_listing(item: Dict[str, Any], city: str, state: str) -> Dict
         "property_type": item.get("propertyType"),
         "lot_size": item.get("lotSize"),
         "source_url": item.get("url") or item.get("listingUrl"),
+        "photos": photos if isinstance(photos, list) else [],
         "source_id": item.get("id") or item.get("propertyId"),
         "raw_data": item,
     }

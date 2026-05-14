@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from typing import Any, Dict, List
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -98,6 +99,26 @@ def fetch_realtor(city, state, limit):
                 asking_price = _extract_digits(price_raw)
                 if not asking_price:
                     continue
+                detail_url = (
+                    item.get("href")
+                    or item.get("permalink")
+                    or item.get("listing_url")
+                    or item.get("rdc_web_url")
+                    or item.get("url")
+                    or ""
+                )
+                photos = item.get("photos") or item.get("photo") or []
+                if isinstance(photos, dict):
+                    photos = [photos]
+                normalized_photos = []
+                if isinstance(photos, list):
+                    for photo in photos[:12]:
+                        if isinstance(photo, str):
+                            normalized_photos.append(photo)
+                        elif isinstance(photo, dict):
+                            href = photo.get("href") or photo.get("url") or photo.get("src")
+                            if href:
+                                normalized_photos.append(href)
 
                 normalized = address.strip()
                 dedupe_key = (
@@ -120,6 +141,8 @@ def fetch_realtor(city, state, limit):
                     "state": state,
                     "zip_code": zip_code,
                     "asking_price": asking_price,
+                    "source_url": urljoin("https://www.realtor.com", detail_url),
+                    "photos": normalized_photos,
                 })
                 if len(listings) >= limit:
                     break

@@ -29,11 +29,13 @@ def init_db():
             state TEXT,
             zip_code TEXT,
             source TEXT,
+            source_url TEXT,
             asking_price INTEGER,
             created_at TEXT NOT NULL
         );
         """
     )
+    _ensure_column(cur, "listings", "source_url", "TEXT")
 
     # Photos
     cur.execute(
@@ -217,18 +219,28 @@ def init_db():
     conn.close()
 
 
-def insert_listing(address, city=None, state=None, zip_code=None, source="manual", asking_price=None):
+def insert_listing(
+    address,
+    city=None,
+    state=None,
+    zip_code=None,
+    source="manual",
+    asking_price=None,
+    source_url=None,
+    photos=None,
+):
     conn = get_connection()
     cur = conn.cursor()
     now = datetime.utcnow().isoformat()
     cur.execute(
         """
-        INSERT INTO listings (address, city, state, zip_code, source, asking_price, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO listings (address, city, state, zip_code, source, source_url, asking_price, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (address, city, state, zip_code, source, asking_price, now),
+        (address, city, state, zip_code, source, source_url, asking_price, now),
     )
     listing_id = cur.lastrowid
+    _replace_listing_photos(cur, listing_id, photos or [])
     conn.commit()
     conn.close()
     return listing_id
@@ -241,6 +253,8 @@ def upsert_listing(
     zip_code=None,
     source="manual",
     asking_price=None,
+    source_url=None,
+    photos=None,
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -267,11 +281,13 @@ def upsert_listing(
                 state = coalesce(?, state),
                 zip_code = coalesce(?, zip_code),
                 source = coalesce(?, source),
+                source_url = coalesce(?, source_url),
                 asking_price = coalesce(?, asking_price)
             WHERE id = ?
             """,
-            (city, state, zip_code, source, asking_price, row["id"]),
+            (city, state, zip_code, source, source_url, asking_price, row["id"]),
         )
+        _replace_listing_photos(cur, row["id"], photos or [])
         conn.commit()
         conn.close()
         return row["id"]
@@ -284,7 +300,28 @@ def upsert_listing(
         zip_code=zip_code,
         source=source,
         asking_price=asking_price,
+        source_url=source_url,
+        photos=photos or [],
     )
+
+
+def _ensure_column(cur, table_name: str, column_name: str, column_type: str):
+    cur.execute(f"PRAGMA table_info({table_name})")
+    existing = {row[1] for row in cur.fetchall()}
+    if column_name not in existing:
+        cur.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+
+
+def _replace_listing_photos(cur, listing_id: int, photos):
+    if not photos:
+        return
+    cur.execute("DELETE FROM listing_photos WHERE listing_id = ?", (listing_id,))
+    for photo_url in photos[:12]:
+        if photo_url:
+            cur.execute(
+                "INSERT INTO listing_photos (listing_id, file_path) VALUES (?, ?)",
+                (listing_id, photo_url),
+            )
 
 
 def get_all_listings(
@@ -314,8 +351,21 @@ def get_all_listings(
 
     cur.execute(query, params)
     rows = cur.fetchall()
+    listings = [dict(row) for row in rows]
+    if listings:
+        ids = [row["id"] for row in listings]
+        placeholders = ",".join("?" for _ in ids)
+        cur.execute(
+            f"SELECT listing_id, file_path FROM listing_photos WHERE listing_id IN ({placeholders})",
+            ids,
+        )
+        photos_by_listing = {}
+        for photo in cur.fetchall():
+            photos_by_listing.setdefault(photo["listing_id"], []).append(photo["file_path"])
+        for row in listings:
+            row["photos"] = photos_by_listing.get(row["id"], [])
     conn.close()
-    return [dict(row) for row in rows]
+    return listings
 
 
 if __name__ == "__main__":
