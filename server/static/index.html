@@ -7,510 +7,1236 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b1020;
-      --panel: #151d33;
-      --border: #2d3651;
-      --text: #f4f7ff;
-      --muted: #9fb0d9;
-      --accent: #5b8cff;
-      --error: #ff6f6f;
+      --bg: #080d12;
+      --surface: #101820;
+      --surface-2: #151f2a;
+      --surface-3: #0c131a;
+      --sidebar: #111827;
+      --border: rgba(226, 232, 240, 0.12);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted-2: #64748b;
+      --blue: #2563eb;
+      --cyan: #22d3ee;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #fb7185;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
     }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.12), transparent 34%),
+        linear-gradient(225deg, rgba(34, 197, 94, 0.08), transparent 28%),
+        var(--bg);
       color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .container {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 24px;
+
+    button, input, select, textarea {
+      font: inherit;
     }
-    .sticky-panel {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 15px;
+      background: var(--blue);
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
     }
-    .panel {
-      background: var(--panel);
+
+    button:hover { transform: translateY(-1px); }
+    button.secondary { background: rgba(255, 255, 255, 0.08); }
+    button.ghost { background: transparent; border: 1px solid var(--border); }
+    button.success { background: #16a34a; }
+
+    input, select, textarea {
+      width: 100%;
+      min-width: 0;
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
+      background: var(--surface-3);
+      color: var(--text);
+      padding: 12px 13px;
+      outline: none;
     }
-    h1, h2 {
-      margin-top: 0;
+
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(34, 211, 238, 0.7);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
     }
-    .row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: end;
+
+    textarea {
+      min-height: 78px;
+      resize: vertical;
     }
+
     label {
-      font-size: 14px;
+      display: grid;
+      gap: 7px;
       color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    a { color: #bfdbfe; }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 276px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: color-mix(in srgb, var(--sidebar) 92%, black);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      transition: width 180ms ease;
     }
-    label.inline {
-      flex-direction: row;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-    }
-    input[type="text"], input[type="number"], input[type="file"], select, textarea {
-      background: #0e1426;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px;
-      border-radius: 8px;
-      min-width: 160px;
-    }
-    textarea {
-      width: 100%;
-      min-height: 72px;
-      resize: vertical;
-      box-sizing: border-box;
-    }
-    button {
-      background: var(--accent);
-      border: none;
-      color: white;
-      padding: 10px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    button.secondary {
-      background: #293353;
-    }
-    .result-card {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 10px;
-      background: #0d1429;
-    }
-    .listing-layout {
-      display: grid;
-      grid-template-columns: 132px 1fr;
-      gap: 12px;
-    }
-    .listing-photo {
-      width: 132px;
-      height: 96px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #111a31;
-    }
-    .listing-actions {
+
+    .brand {
+      height: 78px;
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .listing-actions a {
-      color: #cfe0ff;
-      text-decoration: none;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 9px;
-      font-size: 13px;
-      background: #17213a;
-    }
-    .badge {
-      display: inline-flex;
       align-items: center;
-      border-radius: 999px;
-      padding: 4px 8px;
-      background: #203056;
-      color: #d8e4ff;
-      font-size: 12px;
-      font-weight: 700;
-      margin-right: 6px;
-      margin-top: 8px;
-    }
-    .muted {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .error {
-      color: var(--error);
-      font-weight: 600;
-    }
-    .metric-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .metric {
-      border: 1px solid var(--border);
-      background: #0e162c;
-      border-radius: 10px;
-      padding: 10px;
-    }
-    .metric span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 4px;
-    }
-    .metric strong {
-      font-size: 18px;
-    }
-    .dashboard-card {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      margin-bottom: 10px;
-      background: #0d1429;
-      overflow: hidden;
-    }
-    .dashboard-header {
-      display: grid;
-      grid-template-columns: 34px 1fr auto;
       gap: 12px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--blue), #14b8a6);
+      font-size: 18px;
+      font-weight: 950;
+      box-shadow: 0 14px 32px rgba(37, 99, 235, 0.25);
+      flex: 0 0 auto;
+    }
+
+    .brand-name { font-size: 19px; font-weight: 950; line-height: 1; }
+    .brand-sub { margin-top: 5px; color: var(--cyan); font-size: 12px; font-weight: 800; }
+
+    .nav {
+      display: grid;
+      gap: 7px;
+      padding: 16px;
+      align-content: start;
+      flex: 1;
+    }
+
+    .nav button {
+      justify-content: flex-start;
+      display: flex;
       align-items: center;
-      padding: 14px;
-      cursor: pointer;
+      gap: 11px;
+      width: 100%;
+      background: transparent;
+      border: 1px solid transparent;
+      color: #dbeafe;
+      text-align: left;
     }
-    .dashboard-header:hover {
-      background: #111b35;
+
+    .nav button:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border);
     }
-    .dashboard-chevron {
-      font-size: 20px;
-      color: #d8e4ff;
-      width: 24px;
+
+    .nav button.active {
+      background: rgba(37, 99, 235, 0.95);
+      border-color: rgba(147, 197, 253, 0.3);
+      color: white;
+    }
+
+    .nav-icon {
+      width: 22px;
       text-align: center;
+      color: var(--cyan);
+      font-weight: 950;
+      flex: 0 0 auto;
     }
-    .dashboard-stats {
+
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: grid;
+      gap: 10px;
+    }
+
+    .coverage-pill {
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      color: #bbf7d0;
+      background: rgba(34, 197, 94, 0.09);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .sidebar.collapsed {
+      width: 82px;
+    }
+
+    .sidebar.collapsed .brand-copy,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .coverage-pill {
+      display: none;
+    }
+
+    .sidebar.collapsed .brand {
+      justify-content: center;
+      padding: 0;
+    }
+
+    .sidebar.collapsed .nav button {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 28px;
+      background: rgba(8, 13, 18, 0.9);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .topbar p {
+      margin: 5px 0 0;
+      color: var(--muted);
+    }
+
+    .topbar-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       justify-content: flex-end;
     }
-    .dashboard-body {
-      border-top: 1px solid var(--border);
-      padding: 14px;
-      background: #101933;
+
+    .content {
+      padding: 28px;
+      display: grid;
+      gap: 22px;
+      align-content: start;
     }
-    .print-report {
-      background: white;
-      color: #111;
-      padding: 24px;
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent), var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-pad { padding: 22px; }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header.no-border {
+      border-bottom: 0;
+      padding-bottom: 8px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    .panel p, .helper {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .grid { display: grid; gap: 14px; }
+    .search-grid { grid-template-columns: 1.1fr 0.7fr 0.9fr 0.85fr auto; align-items: end; }
+    .filter-grid { grid-template-columns: minmax(220px, 1fr) 160px 180px auto auto; align-items: end; }
+    .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dashboard-grid { grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr); }
+    .detail-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .two-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .stat-card {
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .stat-value {
+      margin-top: 9px;
+      font-size: 32px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .stat-note {
+      margin-top: 8px;
+      color: var(--muted-2);
+      font-size: 13px;
+    }
+
+    .status {
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .error { color: var(--red); font-weight: 850; }
+    .warning { color: var(--yellow); font-weight: 850; }
+    .success-text { color: var(--green); font-weight: 850; }
+
+    .saved-searches {
+      display: grid;
+      gap: 10px;
+    }
+
+    .saved-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .saved-item strong { display: block; }
+    .saved-item span { color: var(--muted); font-size: 13px; }
+
+    .result-list {
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .empty-state {
+      padding: 28px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .property-row + .property-row {
+      border-top: 1px solid rgba(226, 232, 240, 0.08);
+    }
+
+    .property-summary {
+      display: grid;
+      grid-template-columns: 26px 108px minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 16px 20px;
+      cursor: pointer;
+      min-height: 100px;
+    }
+
+    .property-summary:hover { background: rgba(255, 255, 255, 0.035); }
+    .chevron { color: var(--cyan); font-size: 22px; font-weight: 950; }
+
+    .thumb {
+      width: 108px;
+      height: 78px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-3);
+    }
+
+    .thumb.no-photo {
+      display: grid;
+      place-items: center;
+      color: var(--muted-2);
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .property-title {
+      font-size: 17px;
+      font-weight: 950;
+      overflow-wrap: anywhere;
+    }
+
+    .property-subtitle {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 9px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: rgba(255, 255, 255, 0.07);
+      color: #dbeafe;
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .badge.green { color: #bbf7d0; background: rgba(34, 197, 94, 0.12); }
+    .badge.yellow { color: #fde68a; background: rgba(245, 158, 11, 0.13); }
+    .badge.red { color: #fecdd3; background: rgba(251, 113, 133, 0.12); }
+
+    .row-stats {
+      display: flex;
+      gap: 18px;
+      text-align: right;
+      align-items: center;
+    }
+
+    .row-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .row-stat strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 17px;
+      white-space: nowrap;
+    }
+
+    .score { color: var(--green); }
+
+    .property-details {
+      padding: 0 20px 20px 170px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .mini-panel {
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 15px;
+    }
+
+    .mini-panel h3 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .kv {
+      display: grid;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .kv div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.07);
+      padding-bottom: 7px;
+    }
+
+    .kv div:last-child { border-bottom: 0; padding-bottom: 0; }
+    .kv strong { color: var(--text); text-align: right; overflow-wrap: anywhere; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .actions a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.07);
+      color: #dbeafe;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .source-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      padding: 0 22px 22px;
+    }
+
+    .source-card {
+      border: 1px solid var(--border);
+      background: var(--surface-3);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .source-card strong { display: block; }
+    .source-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+
+    .placeholder {
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pipeline-column {
+      min-height: 160px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface-3);
+      padding: 14px;
+    }
+
+    .pipeline-column h3 { margin: 0 0 10px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+    .tab-panel.hidden { display: none; }
+    .hide { display: none !important; }
+
+    @media (max-width: 1180px) {
+      .dashboard-grid,
+      .detail-grid,
+      .pipeline,
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .search-grid, .filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+      }
+      .sidebar.collapsed { width: auto; }
+      .brand-copy, .sidebar.collapsed .brand-copy,
+      .nav-label, .sidebar.collapsed .nav-label,
+      .coverage-pill, .sidebar.collapsed .coverage-pill {
+        display: block;
+      }
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .topbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .topbar-actions { justify-content: flex-start; }
+      .content { padding: 18px; }
+      .dashboard-grid,
+      .detail-grid,
+      .pipeline,
+      .stats-grid,
+      .search-grid,
+      .filter-grid,
+      .two-grid {
+        grid-template-columns: 1fr;
+      }
+      .property-summary {
+        grid-template-columns: 24px minmax(0, 1fr);
+        gap: 12px;
+      }
+      .thumb { display: none; }
+      .row-stats {
+        grid-column: 2;
+        justify-content: flex-start;
+        text-align: left;
+        flex-wrap: wrap;
+      }
+      .property-details { padding: 0 14px 16px 50px; }
+      .saved-item { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>House Deal Scraper</h1>
-    <p class="muted">Backend + UI running on the same deployment.</p>
-
-    <div class="panel sticky-panel">
-      <h2>Data Sources</h2>
-      <p id="sourcesStatus" class="muted">Checking data sources...</p>
-      <div id="sourcesResults"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Analyze Listings</h2>
-      <div class="row">
-        <label for="city">
-          City
-          <input id="city" type="text" placeholder="Detroit" autocomplete="address-level2" />
-        </label>
-        <label for="state">
-          State
-          <input id="state" type="text" placeholder="MI" maxlength="2" autocomplete="address-level1" />
-        </label>
-        <label for="maxPrice">
-          Max Price
-          <input id="maxPrice" type="number" min="0" step="1000" placeholder="150000" />
-        </label>
-        <label class="inline">
-          <input id="photos" type="checkbox" />
-          Include photos
-        </label>
-        <button id="analyzeBtn">Run Analyze</button>
+  <div class="app-shell">
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">HD</div>
+        <div class="brand-copy">
+          <div class="brand-name">House Deal</div>
+          <div class="brand-sub">Intelligence System</div>
+        </div>
       </div>
-      <p id="analyzeStatus" class="muted"></p>
-      <div id="analyzeResults"></div>
-    </div>
 
-    <div class="panel">
-      <h2>AI Property Condition Analyzer</h2>
-      <div class="row">
-        <label for="conditionAddress">
-          Address
-          <input id="conditionAddress" type="text" placeholder="123 Main St" />
-        </label>
-        <label for="conditionCity">
-          City
-          <input id="conditionCity" type="text" placeholder="Buffalo" />
-        </label>
-        <label for="conditionState">
-          State
-          <input id="conditionState" type="text" maxlength="2" placeholder="NY" />
-        </label>
-        <label for="conditionImages">
-          Photos
-          <input id="conditionImages" type="file" accept="image/*" multiple />
-        </label>
-        <button id="conditionBtn">Analyze Photos</button>
-      </div>
-      <p id="conditionStatus" class="muted"></p>
-      <div id="conditionResults"></div>
-    </div>
+      <nav class="nav" aria-label="Dashboard navigation">
+        <button type="button" class="nav-btn active" data-tab="dashboard"><span class="nav-icon">D</span><span class="nav-label">Dashboard</span></button>
+        <button type="button" class="nav-btn" data-tab="research"><span class="nav-icon">R</span><span class="nav-label">Research</span></button>
+        <button type="button" class="nav-btn" data-tab="database"><span class="nav-icon">DB</span><span class="nav-label">Property Database</span></button>
+        <button type="button" class="nav-btn" data-tab="ai"><span class="nav-icon">AI</span><span class="nav-label">AI Analyzer</span></button>
+        <button type="button" class="nav-btn" data-tab="maps"><span class="nav-icon">M</span><span class="nav-label">Heat Maps</span></button>
+        <button type="button" class="nav-btn" data-tab="alerts"><span class="nav-icon">A</span><span class="nav-label">Alerts</span></button>
+        <button type="button" class="nav-btn" data-tab="crm"><span class="nav-icon">C</span><span class="nav-label">Investor CRM</span></button>
+        <button type="button" class="nav-btn" data-tab="settings"><span class="nav-icon">S</span><span class="nav-label">Settings</span></button>
+      </nav>
 
-    <div class="panel">
-      <h2>Dashboard</h2>
-      <div class="row">
-        <button id="loadListingsBtn" class="secondary">Load Listings</button>
-        <button id="loadDealsBtn" class="secondary">Load High-Score Deals</button>
-        <label for="dashboardSearch">
-          Search
-          <input id="dashboardSearch" type="text" placeholder="Address or city" />
-        </label>
-        <label for="dashboardScore">
-          Min Score
-          <select id="dashboardScore">
-            <option value="0">All</option>
-            <option value="50">50+</option>
-            <option value="70">70+</option>
-            <option value="85">85+</option>
-          </select>
-        </label>
-        <label for="dashboardSort">
-          Sort
-          <select id="dashboardSort">
-            <option value="score">Deal score</option>
-            <option value="newest">Newest</option>
-            <option value="price">Price/value</option>
-          </select>
-        </label>
+      <div class="sidebar-footer">
+        <div class="coverage-pill">Low-cost engine active. Premium APIs stay off unless enabled.</div>
+        <button id="collapseSidebarBtn" type="button" class="secondary">Collapse</button>
       </div>
-      <p id="listingsStatus" class="muted"></p>
-      <div id="listingsResults"></div>
-    </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Scraped property intelligence and operating metrics.</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="newSearchBtn" type="button">New Search</button>
+          <button id="savedSearchesBtn" type="button" class="secondary">Saved Searches</button>
+          <button id="refreshDataBtn" type="button" class="ghost">Refresh Data</button>
+        </div>
+      </header>
+
+      <section id="tab-dashboard" class="content tab-panel">
+        <div class="grid stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Properties Loaded</div>
+            <div id="statProperties" class="stat-value">0</div>
+            <div class="stat-note">Current dashboard dataset</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">High Deal Scores</div>
+            <div id="statHighScores" class="stat-value">0</div>
+            <div class="stat-note">Scores at 70 or higher</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Average Score</div>
+            <div id="statAvgScore" class="stat-value">0</div>
+            <div class="stat-note">Across loaded properties</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Premium APIs</div>
+            <div id="statApiMode" class="stat-value">Off</div>
+            <div class="stat-note">RentCast disabled by default</div>
+          </div>
+        </div>
+
+        <div class="grid dashboard-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Operating Summary</h2>
+                <p>Load the live database or run a new search to populate the dashboard.</p>
+              </div>
+              <div class="actions">
+                <button id="dashboardLoadDealsBtn" type="button">Load High Deals</button>
+                <button id="dashboardLoadListingsBtn" type="button" class="secondary">Load Listings</button>
+              </div>
+            </div>
+            <div id="dashboardPreview" class="empty-state">No properties loaded yet.</div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header no-border">
+              <div>
+                <h2>Saved Searches</h2>
+                <p>Save repeated city and price filters for faster research.</p>
+              </div>
+            </div>
+            <div id="savedSearchesList" class="panel-pad saved-searches"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Data Source Health</h2>
+              <p>Shows which live and low-cost sources are available to the deployed app.</p>
+            </div>
+          </div>
+          <div class="panel-pad">
+            <div id="sourcesStatus" class="status">Checking data sources...</div>
+          </div>
+          <div id="sourcesResults" class="source-grid"></div>
+        </div>
+      </section>
+
+      <section id="tab-research" class="content tab-panel hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Analyze Listings</h2>
+              <p>Search public listing sources, optionally include photos, set a maximum price, and save the search for reuse.</p>
+            </div>
+            <button id="saveSearchBtn" type="button" class="secondary">Save Search</button>
+          </div>
+          <div class="panel-pad grid search-grid">
+            <label>City<input id="city" type="text" placeholder="Peoria" autocomplete="address-level2" /></label>
+            <label>State<input id="state" type="text" maxlength="2" placeholder="IL" autocomplete="address-level1" /></label>
+            <label>Maximum Price<input id="maxPrice" type="number" min="0" step="1000" placeholder="150000" /></label>
+            <label>Photos<select id="photos"><option value="true">Include photos</option><option value="false">No photos</option></select></label>
+            <button id="analyzeBtn" type="button">Run Analysis</button>
+          </div>
+          <div class="panel-pad" style="padding-top:0">
+            <div id="analyzeStatus" class="status"></div>
+          </div>
+        </div>
+
+        <div class="result-list">
+          <div class="panel-header">
+            <div>
+              <h2>Scraped Property Results</h2>
+              <p>Expand listings to view property intelligence, photos, source links, CRM actions, and notes.</p>
+            </div>
+          </div>
+          <div id="analyzeResults" class="empty-state">Run a search to see scraped properties.</div>
+        </div>
+      </section>
+
+      <section id="tab-database" class="content tab-panel hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Property Database</h2>
+              <p>Search, filter, sort, expand, note, export, and move properties into the pipeline.</p>
+            </div>
+            <div class="actions">
+              <button id="loadListingsBtn" type="button" class="secondary">Load Listings</button>
+              <button id="loadDealsBtn" type="button">Load High-Score Deals</button>
+            </div>
+          </div>
+          <div class="panel-pad grid filter-grid">
+            <label>Search<input id="dashboardSearch" type="text" placeholder="Address, city, county" /></label>
+            <label>Min Score<select id="dashboardScore"><option value="0">All Scores</option><option value="50">50+</option><option value="70">70+</option><option value="85">85+</option></select></label>
+            <label>Sort<select id="dashboardSort"><option value="score">Deal score</option><option value="newest">Newest</option><option value="price">Price/value</option></select></label>
+            <button id="expandAllBtn" type="button" class="secondary">Expand All</button>
+            <button id="collapseAllBtn" type="button" class="ghost">Collapse All</button>
+          </div>
+          <div class="panel-pad" style="padding-top:0">
+            <div id="listingsStatus" class="status"></div>
+          </div>
+        </div>
+
+        <div id="listingsResults" class="result-list">
+          <div class="empty-state">Load listings or high-score deals to open the property database.</div>
+        </div>
+      </section>
+
+      <section id="tab-ai" class="content tab-panel hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>AI Property Condition Analyzer</h2>
+              <p>Upload kitchen, bathroom, exterior, mechanical, and interior photos for rehab and rental analysis.</p>
+            </div>
+          </div>
+          <div class="panel-pad grid search-grid">
+            <label>Address<input id="conditionAddress" type="text" placeholder="123 Main St" /></label>
+            <label>City<input id="conditionCity" type="text" placeholder="Buffalo" /></label>
+            <label>State<input id="conditionState" type="text" maxlength="2" placeholder="NY" /></label>
+            <label>Photos<input id="conditionImages" type="file" accept="image/*" multiple /></label>
+            <button id="conditionBtn" type="button">Analyze Photos</button>
+          </div>
+          <div class="panel-pad" style="padding-top:0">
+            <div id="conditionStatus" class="status"></div>
+          </div>
+          <div id="conditionResults" class="panel-pad"></div>
+        </div>
+      </section>
+
+      <section id="tab-maps" class="content tab-panel hidden">
+        <div class="panel placeholder">
+          <h2>Heat Maps</h2>
+          <p>Map-ready data is available through saved property latitude and longitude fields where the source provides coordinates. This section is prepared for PostGIS or client-side map overlays.</p>
+          <div class="grid stats-grid">
+            <div class="stat-card"><div class="stat-label">Coverage Level</div><div class="stat-value">Ready</div><div class="stat-note">Coordinates are stored when scraped.</div></div>
+            <div class="stat-card"><div class="stat-label">Next Layer</div><div class="stat-value">Tax</div><div class="stat-note">County and delinquency overlays.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-alerts" class="content tab-panel hidden">
+        <div class="panel placeholder">
+          <h2>Deal Alerts</h2>
+          <p>High-score alert data is available at <code>/api/deals/alerts</code>. Use the database tab to load, review, and export the current alert candidates.</p>
+          <button id="loadAlertsBtn" type="button">Load Alert Candidates</button>
+          <div id="alertsResults" class="result-list"><div class="empty-state">Load alert candidates to review high-score properties.</div></div>
+        </div>
+      </section>
+
+      <section id="tab-crm" class="content tab-panel hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Investor CRM</h2>
+              <p>Pipeline view for properties moved through research, review, offer, and watchlist stages.</p>
+            </div>
+          </div>
+          <div class="panel-pad pipeline">
+            <div class="pipeline-column"><h3>Research</h3><div id="crmResearch" class="status">Load database items to populate.</div></div>
+            <div class="pipeline-column"><h3>Review</h3><div class="status">Use Add to CRM on a property card.</div></div>
+            <div class="pipeline-column"><h3>Offer</h3><div class="status">Offer workflow foundation.</div></div>
+            <div class="pipeline-column"><h3>Watchlist</h3><div class="status">Saved watchlist foundation.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-settings" class="content tab-panel hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Settings</h2>
+              <p>The app currently prioritizes public sources, cached intelligence, HUD-style estimates, and optional premium enrichment only when enabled.</p>
+            </div>
+            <button id="settingsRefreshBtn" type="button" class="secondary">Refresh Sources</button>
+          </div>
+          <div id="settingsSources" class="source-grid"></div>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script>
-    const analyzeBtn = document.getElementById("analyzeBtn");
-    const loadListingsBtn = document.getElementById("loadListingsBtn");
-    const loadDealsBtn = document.getElementById("loadDealsBtn");
-    const analyzeStatus = document.getElementById("analyzeStatus");
-    const listingsStatus = document.getElementById("listingsStatus");
-    const conditionBtn = document.getElementById("conditionBtn");
-    const conditionStatus = document.getElementById("conditionStatus");
-    const conditionResults = document.getElementById("conditionResults");
-    const analyzeResults = document.getElementById("analyzeResults");
-    const listingsResults = document.getElementById("listingsResults");
-    const sourcesStatus = document.getElementById("sourcesStatus");
-    const sourcesResults = document.getElementById("sourcesResults");
-    const dashboardSearch = document.getElementById("dashboardSearch");
-    const dashboardScore = document.getElementById("dashboardScore");
-    const dashboardSort = document.getElementById("dashboardSort");
-    let dashboardItems = [];
-    let expandedProperties = {};
+    const state = {
+      activeTab: "dashboard",
+      dashboardItems: [],
+      expanded: {},
+      savedSearches: [],
+    };
 
-    function renderError(container, message) {
-      container.textContent = "";
-      const p = document.createElement("p");
-      p.className = "error";
-      p.textContent = message;
-      container.appendChild(p);
-    }
+    const tabTitles = {
+      dashboard: ["Dashboard", "Scraped property intelligence and operating metrics."],
+      research: ["Research", "Run live listing analysis with price filters and photos."],
+      database: ["Property Database", "Search, expand, export, and manage scraped properties."],
+      ai: ["AI Analyzer", "Photo-based rehab, condition, rent, and ARV analysis."],
+      maps: ["Heat Maps", "Map-ready property intelligence and future overlay layers."],
+      alerts: ["Alerts", "High-score candidate alerts and deal monitoring."],
+      crm: ["Investor CRM", "Pipeline workflow for investor follow-up."],
+      settings: ["Settings", "Data-source health and low-cost engine configuration."],
+    };
 
-    function createListingCard(item) {
-      const l = item.listing || item;
-      const deal = item.deal_scores || {};
-      const raw = l.raw_data || {};
-      const source = l.source || "unknown";
-      const price = l.price ?? l.asking_price ?? l.estimated_value;
-      const priceText = Number.isFinite(price) ? `$${price.toLocaleString()}` : "N/A";
-      const cityState = [l.city, l.state].filter(Boolean).join(", ");
-      const photos = l.photos || item.photos || [];
-      const links = l.links || item.links || {};
-      const sourceUrl = l.source_url || raw.source_url || item.source_url || links.source;
-      const propertyId = l.property_intelligence_id || (Number.isFinite(l.deal_score) ? l.id : null);
-      const card = document.createElement("div");
-      card.className = "result-card";
+    const $ = (id) => document.getElementById(id);
 
-      const layout = document.createElement("div");
-      layout.className = "listing-layout";
-      if (photos.length) {
-        const img = document.createElement("img");
-        img.className = "listing-photo";
-        img.src = photos[0];
-        img.alt = l.address || "Property photo";
-        layout.appendChild(img);
-      } else {
-        const placeholder = document.createElement("div");
-        placeholder.className = "listing-photo";
-        layout.appendChild(placeholder);
-      }
-
-      const body = document.createElement("div");
-      const titleRow = document.createElement("div");
-      const title = document.createElement("strong");
-      title.textContent = l.address || "Unknown address";
-      titleRow.appendChild(title);
-      body.appendChild(titleRow);
-
-      const location = document.createElement("div");
-      location.className = "muted";
-      location.textContent = cityState || "Unknown location";
-      body.appendChild(location);
-
-      const priceRow = document.createElement("div");
-      priceRow.textContent = `Price: ${priceText}`;
-      body.appendChild(priceRow);
-
-      const sourceRow = document.createElement("div");
-      sourceRow.className = "muted";
-      sourceRow.textContent = `Source: ${source}`;
-      body.appendChild(sourceRow);
-
-      if (Number.isFinite(deal.final_score) || Number.isFinite(l.deal_score)) {
-        const score = document.createElement("span");
-        score.className = "badge";
-        const scoreValue = Number.isFinite(l.deal_score) ? l.deal_score : Math.round(deal.final_score * 100);
-        score.textContent = `Deal Score ${scoreValue}/100`;
-        body.appendChild(score);
-      }
-      if (photos.length) {
-        const photoBadge = document.createElement("span");
-        photoBadge.className = "badge";
-        photoBadge.textContent = `${photos.length} photo${photos.length === 1 ? "" : "s"}`;
-        body.appendChild(photoBadge);
-      }
-
-      const actions = document.createElement("div");
-      actions.className = "listing-actions";
-      if (sourceUrl) {
-        const link = document.createElement("a");
-        link.href = sourceUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = `Open on ${source}`;
-        actions.appendChild(link);
-      }
-      const searchQuery = encodeURIComponent([l.address, l.city, l.state].filter(Boolean).join(" "));
-      const searchLinks = [
-        ["Zillow", links.zillow || `https://www.zillow.com/homes/${searchQuery}_rb/`],
-        ["Realtor", links.realtor || `https://www.realtor.com/realestateandhomes-search/${searchQuery}`],
-        ["Redfin", links.redfin || `https://www.redfin.com/homes-for-sale#!search_location=${searchQuery}`],
-        ["Maps", links.googleMaps || `https://www.google.com/maps/search/?api=1&query=${searchQuery}`],
-      ];
-      for (const [label, href] of searchLinks) {
-        const link = document.createElement("a");
-        link.href = href;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = label;
-        actions.appendChild(link);
-      }
-      if (propertyId) {
-        const detail = document.createElement("a");
-        detail.href = `/api/properties/${propertyId}`;
-        detail.target = "_blank";
-        detail.rel = "noopener noreferrer";
-        detail.textContent = "Property intelligence";
-        actions.appendChild(detail);
-      }
-      body.appendChild(actions);
-      layout.appendChild(body);
-      card.appendChild(layout);
-
-      return card;
-    }
-
-    function renderMutedMessage(container, message) {
-      container.textContent = "";
-      const p = document.createElement("p");
-      p.className = "muted";
-      p.textContent = message;
-      container.appendChild(p);
-    }
-
-    function renderListingCards(container, items) {
-      container.textContent = "";
-      const fragment = document.createDocumentFragment();
-      for (const item of items) {
-        fragment.appendChild(createListingCard(item));
-      }
-      container.appendChild(fragment);
-    }
-
-    function normalizeDashboardProperty(item) {
-      const p = item.listing || item.property || item;
-      return {
-        ...p,
-        dealScore: p.dealScore ?? p.deal_score ?? p.property_deal_score ?? 0,
-        estimatedRent: p.estimatedRent ?? p.estimated_rent ?? p.rentEstimate ?? p.section8Estimate ?? null,
-        estimatedValue: p.estimatedValue ?? p.estimated_value ?? p.price ?? p.asking_price ?? null,
-        taxAmountDue: p.taxAmountDue ?? p.tax_amount_due ?? null,
-        yearBuilt: p.yearBuilt ?? p.year_built ?? null,
-        sourceUrl: p.source_url ?? p.sourceUrl ?? p.links?.source ?? null,
-      };
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
     function money(value) {
       const number = Number(value || 0);
-      return number ? `$${number.toLocaleString()}` : "N/A";
+      return number ? "$" + number.toLocaleString() : "N/A";
+    }
+
+    function percent(value) {
+      const number = Number(value || 0);
+      return number ? Math.round(number * 100) + "%" : "N/A";
+    }
+
+    function normalizeProperty(raw) {
+      const p = raw?.listing || raw?.property || raw || {};
+      const photos = p.photos || raw?.photos || [];
+      const links = p.links || raw?.links || {};
+      return {
+        ...p,
+        id: p.id || p.property_intelligence_id || p.source_id || p.address,
+        address: p.address || p.formattedAddress || p.formatted_address || "Unknown address",
+        city: p.city || "",
+        state: p.state || "",
+        zip: p.zip || p.zipCode || p.zip_code || "",
+        county: p.county || "",
+        dealScore: Number(p.dealScore ?? p.deal_score ?? raw?.dealScore ?? raw?.deal_score ?? 0),
+        estimatedRent: p.estimatedRent ?? p.estimated_rent ?? p.rentEstimate ?? p.rent_estimate,
+        estimatedValue: p.estimatedValue ?? p.estimated_value ?? p.valueEstimate ?? p.price ?? p.asking_price,
+        taxAmountDue: p.taxAmountDue ?? p.tax_amount_due,
+        yearBuilt: p.yearBuilt ?? p.year_built,
+        sourceUrl: p.source_url ?? p.sourceUrl ?? links.source,
+        sourceName: p.source_name ?? p.sourceName ?? p.source ?? "Property source",
+        photos: Array.isArray(photos) ? photos.filter(Boolean) : [],
+        links,
+        aiSummary: p.aiSummary ?? p.ai_summary ?? "Analysis uses available listing, public, and cached property intelligence.",
+      };
+    }
+
+    function propertyLinks(property) {
+      const query = encodeURIComponent([property.address, property.city, property.state, property.zip].filter(Boolean).join(" "));
+      return {
+        Source: property.sourceUrl || property.links?.source,
+        Zillow: property.links?.zillow || `https://www.zillow.com/homes/${query}_rb/`,
+        Realtor: property.links?.realtor || `https://www.realtor.com/realestateandhomes-search/${query}`,
+        Redfin: property.links?.redfin || `https://www.redfin.com/homes-for-sale#!search_location=${query}`,
+        Maps: property.links?.googleMaps || property.links?.maps || `https://www.google.com/maps/search/?api=1&query=${query}`,
+      };
+    }
+
+    function showError(container, message) {
+      container.innerHTML = `<div class="empty-state error">${escapeHtml(message)}</div>`;
+    }
+
+    function switchTab(tab) {
+      state.activeTab = tab;
+      document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.add("hidden"));
+      $("tab-" + tab)?.classList.remove("hidden");
+      document.querySelectorAll(".nav-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === tab);
+      });
+      $("pageTitle").textContent = tabTitles[tab][0];
+      $("pageSubtitle").textContent = tabTitles[tab][1];
+      if (tab === "database" && !state.dashboardItems.length) {
+        $("listingsStatus").textContent = "Load listings or high-score deals to begin.";
+      }
+    }
+
+    function updateStats(items) {
+      const rows = items.map(normalizeProperty);
+      const high = rows.filter((p) => p.dealScore >= 70).length;
+      const average = rows.length ? Math.round(rows.reduce((sum, p) => sum + p.dealScore, 0) / rows.length) : 0;
+      $("statProperties").textContent = String(rows.length);
+      $("statHighScores").textContent = String(high);
+      $("statAvgScore").textContent = String(average);
+      $("crmResearch").textContent = rows.length ? `${rows.length} loaded properties ready for review.` : "Load database items to populate.";
+
+      const previewRows = rows.slice(0, 3);
+      if (!previewRows.length) {
+        $("dashboardPreview").innerHTML = `<div class="empty-state">No properties loaded yet.</div>`;
+        return;
+      }
+      $("dashboardPreview").className = "";
+      $("dashboardPreview").innerHTML = "";
+      previewRows.forEach((property) => $("dashboardPreview").appendChild(createPropertyRow(property, { compact: true })));
     }
 
     function filteredDashboardItems() {
-      const term = dashboardSearch.value.trim().toLowerCase();
-      const minScore = Number(dashboardScore.value || 0);
-      let items = dashboardItems
-        .map(normalizeDashboardProperty)
-        .filter((p) => {
-          const haystack = [p.address, p.city, p.state, p.county].filter(Boolean).join(" ").toLowerCase();
-          return haystack.includes(term) && Number(p.dealScore || 0) >= minScore;
-        });
-      const sort = dashboardSort.value;
-      items.sort((a, b) => {
-        if (sort === "newest") return String(b.created_at || "").localeCompare(String(a.created_at || ""));
-        if (sort === "price") return Number(a.estimatedValue || 0) - Number(b.estimatedValue || 0);
-        return Number(b.dealScore || 0) - Number(a.dealScore || 0);
+      const term = ($("dashboardSearch").value || "").toLowerCase();
+      const minScore = Number($("dashboardScore").value || 0);
+      const sort = $("dashboardSort").value || "score";
+      const rows = state.dashboardItems.map(normalizeProperty).filter((p) => {
+        const haystack = [p.address, p.city, p.state, p.county, p.zip].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(term) && p.dealScore >= minScore;
       });
-      return items;
+      rows.sort((a, b) => {
+        if (sort === "newest") return String(b.created_at || b.createdAt || "").localeCompare(String(a.created_at || a.createdAt || ""));
+        if (sort === "price") return Number(a.estimatedValue || 0) - Number(b.estimatedValue || 0);
+        return b.dealScore - a.dealScore;
+      });
+      return rows;
+    }
+
+    function thumbnailElement(property) {
+      if (property.photos?.length) {
+        const img = document.createElement("img");
+        img.className = "thumb";
+        img.src = property.photos[0];
+        img.alt = property.address;
+        img.loading = "lazy";
+        return img;
+      }
+      const fallback = document.createElement("div");
+      fallback.className = "thumb no-photo";
+      fallback.textContent = "No photo";
+      return fallback;
+    }
+
+    function scoreBadge(property) {
+      if (property.dealScore >= 85) return `<span class="badge green">Very strong</span>`;
+      if (property.dealScore >= 70) return `<span class="badge green">High score</span>`;
+      if (property.dealScore >= 50) return `<span class="badge yellow">Review</span>`;
+      return `<span class="badge">Watch</span>`;
+    }
+
+    function createPropertyRow(raw, options = {}) {
+      const property = normalizeProperty(raw);
+      const id = String(property.id || property.address);
+      const isOpen = Boolean(state.expanded[id]) && !options.compact;
+      const row = document.createElement("div");
+      row.className = "property-row";
+
+      const summary = document.createElement("div");
+      summary.className = "property-summary";
+      summary.addEventListener("click", () => {
+        if (options.compact) {
+          switchTab("database");
+          return;
+        }
+        state.expanded[id] = !state.expanded[id];
+        renderDashboard();
+      });
+
+      const chevron = document.createElement("div");
+      chevron.className = "chevron";
+      chevron.textContent = options.compact ? ">" : isOpen ? "v" : ">";
+      summary.appendChild(chevron);
+      summary.appendChild(thumbnailElement(property));
+
+      const title = document.createElement("div");
+      const location = [property.city, property.state, property.zip].filter(Boolean).join(", ");
+      title.innerHTML = `
+        <div class="property-title">${escapeHtml(property.address)}</div>
+        <div class="property-subtitle">${escapeHtml(location || property.county || "Location unavailable")}</div>
+        <div class="badges">
+          ${scoreBadge(property)}
+          ${property.photos?.length ? `<span class="badge">${property.photos.length} photo${property.photos.length === 1 ? "" : "s"}</span>` : `<span class="badge red">No photos</span>`}
+          ${property.sourceUrl ? `<span class="badge">Direct source</span>` : `<span class="badge yellow">Search links</span>`}
+        </div>
+      `;
+      summary.appendChild(title);
+
+      const stats = document.createElement("div");
+      stats.className = "row-stats";
+      [
+        ["Deal Score", property.dealScore || 0, "score"],
+        ["Est Rent", money(property.estimatedRent), ""],
+        ["Est Value", money(property.estimatedValue), ""],
+      ].forEach(([label, value, className]) => {
+        const stat = document.createElement("div");
+        stat.className = "row-stat";
+        stat.innerHTML = `<span>${escapeHtml(label)}</span><strong class="${className}">${escapeHtml(value)}</strong>`;
+        stats.appendChild(stat);
+      });
+      summary.appendChild(stats);
+      row.appendChild(summary);
+
+      if (isOpen) {
+        row.appendChild(createPropertyDetails(property));
+      }
+
+      return row;
+    }
+
+    function createPropertyDetails(property) {
+      const details = document.createElement("div");
+      details.className = "property-details";
+
+      const grid = document.createElement("div");
+      grid.className = "grid detail-grid";
+      [
+        ["AI Analysis", [["Summary", property.aiSummary], ["Status", property.status || "N/A"], ["Source", property.sourceName]]],
+        ["Distress", [["Tax delinquent", property.tax_delinquent || property.taxDelinquent ? "YES" : "NO"], ["Vacant", property.vacant ? "YES" : "NO"], ["Foreclosure", property.foreclosure ? "YES" : "NO"], ["Absentee owner", property.absentee_owner || property.absenteeOwner ? "YES" : "NO"]]],
+        ["Financials", [["Rent", money(property.estimatedRent)], ["Value", money(property.estimatedValue)], ["Tax due", money(property.taxAmountDue)], ["Rent ratio", property.estimatedRent && property.estimatedValue ? percent((Number(property.estimatedRent) * 12) / Number(property.estimatedValue)) : "N/A"]]],
+        ["Property Details", [["Beds", property.bedrooms ?? "N/A"], ["Baths", property.bathrooms ?? "N/A"], ["Sqft", property.sqft ?? "N/A"], ["Year built", property.yearBuilt ?? "N/A"]]],
+      ].forEach(([heading, values]) => {
+        const panel = document.createElement("div");
+        panel.className = "mini-panel";
+        panel.innerHTML = `<h3>${escapeHtml(heading)}</h3>`;
+        const kv = document.createElement("div");
+        kv.className = "kv";
+        values.forEach(([key, value]) => {
+          const item = document.createElement("div");
+          item.innerHTML = `<span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong>`;
+          kv.appendChild(item);
+        });
+        panel.appendChild(kv);
+        grid.appendChild(panel);
+      });
+      details.appendChild(grid);
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      Object.entries(propertyLinks(property)).forEach(([label, href]) => {
+        if (!href) return;
+        const a = document.createElement("a");
+        a.href = href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = label;
+        actions.appendChild(a);
+      });
+
+      const pdf = document.createElement("button");
+      pdf.type = "button";
+      pdf.textContent = "Export PDF";
+      pdf.addEventListener("click", (event) => {
+        event.stopPropagation();
+        exportPropertyPDF(property);
+      });
+      actions.appendChild(pdf);
+
+      const crm = document.createElement("button");
+      crm.type = "button";
+      crm.className = "secondary";
+      crm.textContent = "Add to CRM";
+      crm.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await updatePropertyStatus(property, "CRM");
+      });
+      actions.appendChild(crm);
+
+      const watch = document.createElement("button");
+      watch.type = "button";
+      watch.className = "secondary";
+      watch.textContent = "Save Watchlist";
+      watch.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await addToWatchlist(property);
+      });
+      actions.appendChild(watch);
+
+      details.appendChild(actions);
+
+      if (property.photos?.length > 1) {
+        const photoPanel = document.createElement("div");
+        photoPanel.className = "mini-panel";
+        photoPanel.innerHTML = `<h3>Scraped Photos</h3>`;
+        const photoGrid = document.createElement("div");
+        photoGrid.className = "grid";
+        photoGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(130px, 1fr))";
+        property.photos.slice(0, 8).forEach((url) => {
+          const img = document.createElement("img");
+          img.className = "thumb";
+          img.style.width = "100%";
+          img.style.height = "96px";
+          img.loading = "lazy";
+          img.src = url;
+          img.alt = property.address;
+          photoGrid.appendChild(img);
+        });
+        photoPanel.appendChild(photoGrid);
+        details.appendChild(photoPanel);
+      }
+
+      if (property.id && Number.isFinite(Number(property.id))) {
+        const notePanel = document.createElement("div");
+        notePanel.className = "mini-panel";
+        notePanel.innerHTML = `<h3>Investor Notes</h3>`;
+        const textarea = document.createElement("textarea");
+        textarea.placeholder = "Add rehab notes, contact status, offer target, or follow-up plan.";
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "secondary";
+        save.textContent = "Save Note";
+        save.addEventListener("click", async (event) => {
+          event.stopPropagation();
+          const note = textarea.value.trim();
+          if (!note) return;
+          await savePropertyNote(property, note);
+          textarea.value = "";
+        });
+        notePanel.appendChild(textarea);
+        notePanel.appendChild(document.createElement("br"));
+        notePanel.appendChild(save);
+        details.appendChild(notePanel);
+      }
+
+      return details;
+    }
+
+    function renderPropertyList(container, rows, emptyMessage) {
+      container.className = "result-list";
+      container.innerHTML = "";
+      if (!rows.length) {
+        container.innerHTML = `<div class="empty-state">${escapeHtml(emptyMessage)}</div>`;
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      rows.forEach((row) => fragment.appendChild(createPropertyRow(row)));
+      container.appendChild(fragment);
+    }
+
+    function renderDashboard() {
+      const rows = filteredDashboardItems();
+      renderPropertyList($("listingsResults"), rows, "No properties match the current filters.");
+      updateStats(state.dashboardItems);
+      $("listingsStatus").textContent = `Showing ${rows.length} propert${rows.length === 1 ? "y" : "ies"} from ${state.dashboardItems.length} loaded.`;
     }
 
     function exportPropertyPDF(property) {
-      const p = normalizeDashboardProperty(property);
       const report = window.open("", "_blank");
       if (!report) return;
       report.document.write(`
         <html>
-          <head><title>Investor Report - ${p.address || "Property"}</title></head>
-          <body class="print-report">
+          <head><title>Investor Property Report</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 30px; color: #111827;">
             <h1>Investor Property Report</h1>
-            <h2>${p.address || "Unknown address"}</h2>
-            <p>${[p.city, p.state, p.zip].filter(Boolean).join(", ")}</p>
-            <hr />
-            <h3>Investment Summary</h3>
-            <p><strong>Deal Score:</strong> ${p.dealScore || 0}/100</p>
-            <p><strong>Estimated Value:</strong> ${money(p.estimatedValue)}</p>
-            <p><strong>Estimated Rent:</strong> ${money(p.estimatedRent)}</p>
-            <p><strong>Tax Due:</strong> ${money(p.taxAmountDue)}</p>
-            <h3>Property Details</h3>
-            <p><strong>Bedrooms:</strong> ${p.bedrooms ?? "N/A"}</p>
-            <p><strong>Bathrooms:</strong> ${p.bathrooms ?? "N/A"}</p>
-            <p><strong>Sqft:</strong> ${p.sqft ?? "N/A"}</p>
-            <p><strong>Year Built:</strong> ${p.yearBuilt ?? "N/A"}</p>
-            <h3>Distress Flags</h3>
-            <p>Tax delinquent: ${p.tax_delinquent || p.taxDelinquent ? "YES" : "NO"}</p>
-            <p>Vacant: ${p.vacant ? "YES" : "NO"}</p>
-            <p>Foreclosure: ${p.foreclosure ? "YES" : "NO"}</p>
-            <p>Probate: ${p.probate ? "YES" : "NO"}</p>
-            <h3>Summary</h3>
-            <p>${p.ai_summary || "No summary saved."}</p>
+            <h2>${escapeHtml(property.address)}</h2>
+            <p>${escapeHtml([property.city, property.state, property.zip].filter(Boolean).join(", "))}</p>
+            <hr>
+            <p><strong>Deal Score:</strong> ${escapeHtml(property.dealScore)}/100</p>
+            <p><strong>Estimated Value:</strong> ${escapeHtml(money(property.estimatedValue))}</p>
+            <p><strong>Estimated Rent:</strong> ${escapeHtml(money(property.estimatedRent))}</p>
+            <p><strong>Bedrooms:</strong> ${escapeHtml(property.bedrooms ?? "N/A")}</p>
+            <p><strong>Bathrooms:</strong> ${escapeHtml(property.bathrooms ?? "N/A")}</p>
+            <p><strong>Sqft:</strong> ${escapeHtml(property.sqft ?? "N/A")}</p>
+            <p><strong>Year Built:</strong> ${escapeHtml(property.yearBuilt ?? "N/A")}</p>
+            <h3>Investor Summary</h3>
+            <p>${escapeHtml(property.aiSummary)}</p>
+            <h3>Source Links</h3>
+            <ul>
+              ${Object.entries(propertyLinks(property)).filter(([, href]) => href).map(([label, href]) => `<li>${escapeHtml(label)}: ${escapeHtml(href)}</li>`).join("")}
+            </ul>
           </body>
         </html>
       `);
@@ -519,375 +1245,289 @@
       report.print();
     }
 
-    async function saveNote(propertyId, textarea) {
-      const note = textarea.value.trim();
-      if (!note || !propertyId) return;
+    async function updatePropertyStatus(property, status) {
+      if (!property.id || !Number.isFinite(Number(property.id))) {
+        $("listingsStatus").textContent = "This scraped listing has not been saved to the property database yet.";
+        return;
+      }
+      const response = await fetch(`/api/properties/${property.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      $("listingsStatus").textContent = response.ok ? `Property moved to ${status}.` : "Could not update CRM status.";
+    }
+
+    async function addToWatchlist(property) {
+      if (!property.id || !Number.isFinite(Number(property.id))) {
+        $("listingsStatus").textContent = "This listing must be saved before adding it to a watchlist.";
+        return;
+      }
+      const response = await fetch("/api/watchlist/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propertyId: Number(property.id), userId: "dashboard" }),
+      });
+      $("listingsStatus").textContent = response.ok ? "Property added to watchlist." : "Could not add property to watchlist.";
+    }
+
+    async function savePropertyNote(property, note) {
       const response = await fetch("/api/properties/note", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ propertyId, userId: "dashboard", note }),
+        body: JSON.stringify({ propertyId: Number(property.id), userId: "dashboard", note }),
       });
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-      textarea.value = "";
+      $("listingsStatus").textContent = response.ok ? "Note saved." : "Could not save note.";
     }
 
-    function renderDashboard() {
-      const items = filteredDashboardItems();
-      listingsResults.textContent = "";
-      const fragment = document.createDocumentFragment();
-      for (const property of items) {
-        const isOpen = Boolean(expandedProperties[property.id]);
-        const card = document.createElement("div");
-        card.className = "dashboard-card";
-
-        const header = document.createElement("div");
-        header.className = "dashboard-header";
-        header.addEventListener("click", () => {
-          expandedProperties[property.id] = !expandedProperties[property.id];
-          renderDashboard();
-        });
-
-        const chev = document.createElement("div");
-        chev.className = "dashboard-chevron";
-        chev.textContent = isOpen ? "⌄" : "›";
-        header.appendChild(chev);
-
-        const title = document.createElement("div");
-        const strong = document.createElement("strong");
-        strong.textContent = property.address || "Unknown address";
-        const sub = document.createElement("div");
-        sub.className = "muted";
-        sub.textContent = [property.city, property.state, property.zip].filter(Boolean).join(", ");
-        title.appendChild(strong);
-        title.appendChild(sub);
-        header.appendChild(title);
-
-        const stats = document.createElement("div");
-        stats.className = "dashboard-stats";
-        for (const [label, value] of [["Score", property.dealScore || 0], ["Rent", money(property.estimatedRent)], ["Value", money(property.estimatedValue)]]) {
-          const stat = document.createElement("span");
-          stat.className = "badge";
-          stat.textContent = `${label}: ${value}`;
-          stats.appendChild(stat);
-        }
-        header.appendChild(stats);
-        card.appendChild(header);
-
-        if (isOpen) {
-          const body = document.createElement("div");
-          body.className = "dashboard-body";
-          const details = document.createElement("div");
-          details.className = "metric-grid";
-          const rows = [
-            ["Bedrooms", property.bedrooms ?? "N/A"],
-            ["Bathrooms", property.bathrooms ?? "N/A"],
-            ["Sqft", property.sqft ?? "N/A"],
-            ["Year Built", property.yearBuilt ?? "N/A"],
-            ["County", property.county ?? "N/A"],
-            ["Tax Due", money(property.taxAmountDue)],
-            ["Vacant", property.vacant ? "YES" : "NO"],
-            ["Foreclosure", property.foreclosure ? "YES" : "NO"],
-          ];
-          for (const [label, value] of rows) {
-            const box = document.createElement("div");
-            box.className = "metric";
-            const s = document.createElement("span");
-            s.textContent = label;
-            const v = document.createElement("strong");
-            v.textContent = String(value);
-            box.appendChild(s);
-            box.appendChild(v);
-            details.appendChild(box);
-          }
-          body.appendChild(details);
-
-          const summary = document.createElement("p");
-          summary.className = "muted";
-          summary.textContent = property.ai_summary || "No investor summary saved yet.";
-          body.appendChild(summary);
-
-          const actions = document.createElement("div");
-          actions.className = "listing-actions";
-          const links = property.links || {};
-          for (const [label, href] of Object.entries({
-            Source: property.sourceUrl || links.source,
-            Zillow: links.zillow,
-            Realtor: links.realtor,
-            Redfin: links.redfin,
-            Maps: links.googleMaps,
-          })) {
-            if (!href) continue;
-            const a = document.createElement("a");
-            a.href = href;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            a.textContent = label;
-            actions.appendChild(a);
-          }
-          const pdf = document.createElement("button");
-          pdf.className = "secondary";
-          pdf.textContent = "Export PDF Report";
-          pdf.addEventListener("click", (event) => {
-            event.stopPropagation();
-            exportPropertyPDF(property);
-          });
-          actions.appendChild(pdf);
-          body.appendChild(actions);
-
-          const note = document.createElement("textarea");
-          note.placeholder = "Add investor note...";
-          body.appendChild(note);
-          const save = document.createElement("button");
-          save.className = "secondary";
-          save.textContent = "Save Note";
-          save.addEventListener("click", async (event) => {
-            event.stopPropagation();
-            try {
-              await saveNote(property.id, note);
-              listingsStatus.textContent = "Note saved.";
-            } catch (err) {
-              listingsStatus.textContent = `Note failed: ${err.message}`;
-            }
-          });
-          body.appendChild(save);
-          card.appendChild(body);
-        }
-
-        fragment.appendChild(card);
+    function loadSavedSearches() {
+      try {
+        state.savedSearches = JSON.parse(localStorage.getItem("houseDealSavedSearches") || "[]");
+      } catch {
+        state.savedSearches = [];
       }
-      listingsResults.appendChild(fragment);
-      listingsStatus.textContent = `Showing ${items.length} propert${items.length === 1 ? "y" : "ies"}.`;
+      renderSavedSearches();
+    }
+
+    function persistSavedSearches() {
+      localStorage.setItem("houseDealSavedSearches", JSON.stringify(state.savedSearches));
+      renderSavedSearches();
+    }
+
+    function renderSavedSearches() {
+      const list = $("savedSearchesList");
+      list.innerHTML = "";
+      if (!state.savedSearches.length) {
+        list.innerHTML = `<div class="empty-state" style="padding:12px">No saved searches yet.</div>`;
+        return;
+      }
+      state.savedSearches.forEach((search, index) => {
+        const item = document.createElement("div");
+        item.className = "saved-item";
+        item.innerHTML = `
+          <div>
+            <strong>${escapeHtml(search.city)}, ${escapeHtml(search.state)}</strong>
+            <span>Max ${escapeHtml(search.maxPrice ? money(search.maxPrice) : "Any price")} - Photos ${escapeHtml(search.photos === "true" ? "on" : "off")}</span>
+          </div>
+        `;
+        const run = document.createElement("button");
+        run.type = "button";
+        run.textContent = "Run";
+        run.addEventListener("click", () => {
+          $("city").value = search.city;
+          $("state").value = search.state;
+          $("maxPrice").value = search.maxPrice || "";
+          $("photos").value = search.photos || "true";
+          switchTab("research");
+          runAnalyze();
+        });
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "ghost";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => {
+          state.savedSearches.splice(index, 1);
+          persistSavedSearches();
+        });
+        item.appendChild(run);
+        item.appendChild(remove);
+        list.appendChild(item);
+      });
+    }
+
+    function saveCurrentSearch() {
+      const city = $("city").value.trim();
+      const stateCode = $("state").value.trim().toUpperCase();
+      if (!city || !stateCode) {
+        $("analyzeStatus").textContent = "Enter a city and state before saving a search.";
+        return;
+      }
+      const search = {
+        city,
+        state: stateCode,
+        maxPrice: $("maxPrice").value.trim(),
+        photos: $("photos").value,
+        createdAt: new Date().toISOString(),
+      };
+      state.savedSearches = [search, ...state.savedSearches.filter((item) => !(item.city.toLowerCase() === city.toLowerCase() && item.state.toUpperCase() === stateCode))].slice(0, 12);
+      persistSavedSearches();
+      $("analyzeStatus").textContent = "Search saved.";
+    }
+
+    async function runAnalyze() {
+      const city = $("city").value.trim();
+      const stateCode = $("state").value.trim();
+      if (!city || !stateCode) {
+        $("analyzeStatus").textContent = "City and state are required.";
+        return;
+      }
+      $("analyzeStatus").textContent = "Running live analysis...";
+      $("analyzeResults").className = "empty-state";
+      $("analyzeResults").textContent = "Scraping and analyzing listings...";
+      try {
+        const params = new URLSearchParams({
+          city,
+          state: stateCode,
+          include_photos: $("photos").value,
+        });
+        const maxPrice = $("maxPrice").value.trim();
+        if (maxPrice) params.set("max_price", maxPrice);
+        const response = await fetch(`/analyze?${params.toString()}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => null);
+          throw new Error(error?.detail || `Request failed with ${response.status}`);
+        }
+        const rows = await response.json();
+        state.dashboardItems = Array.isArray(rows) ? rows : [];
+        state.expanded = {};
+        updateStats(state.dashboardItems);
+        $("analyzeStatus").textContent = `Found ${state.dashboardItems.length} analyzed listing${state.dashboardItems.length === 1 ? "" : "s"}.`;
+        renderPropertyList($("analyzeResults"), state.dashboardItems, "No live listings were returned for this search.");
+      } catch (err) {
+        $("analyzeStatus").textContent = "";
+        showError($("analyzeResults"), `Analyze failed: ${err.message}`);
+      }
+    }
+
+    async function loadListings() {
+      $("listingsStatus").textContent = "Loading saved listings...";
+      try {
+        const data = await (await fetch("/listings")).json();
+        state.dashboardItems = data.listings || [];
+        state.expanded = {};
+        switchTab("database");
+        renderDashboard();
+      } catch (err) {
+        showError($("listingsResults"), `Could not load listings: ${err.message}`);
+      }
+    }
+
+    async function loadHighDeals() {
+      $("listingsStatus").textContent = "Loading high-score property intelligence...";
+      try {
+        const data = await (await fetch("/api/properties/high-deals")).json();
+        state.dashboardItems = data.data || [];
+        state.expanded = {};
+        switchTab("database");
+        renderDashboard();
+      } catch (err) {
+        showError($("listingsResults"), `Could not load high-score deals: ${err.message}`);
+      }
     }
 
     function renderConditionResult(result) {
-      conditionResults.textContent = "";
-      const card = document.createElement("div");
-      card.className = "result-card";
-
-      const title = document.createElement("strong");
-      title.textContent = "Investment Analysis";
-      card.appendChild(title);
-
-      const metrics = document.createElement("div");
-      metrics.className = "metric-grid";
-      const metricRows = [
+      const values = [
         ["Condition Score", `${result.conditionScore ?? 0}/100`],
-        ["Estimated Rehab", `$${Number(result.rehabEstimate || 0).toLocaleString()}`],
-        ["Estimated ARV", `$${Number(result.arv || 0).toLocaleString()}`],
-        ["Estimated Rent", `$${Number(result.rentEstimate || 0).toLocaleString()}/mo`],
+        ["Estimated Rehab", money(result.rehabEstimate)],
+        ["ARV", money(result.arv)],
+        ["Rent Estimate", `${money(result.rentEstimate)}/mo`],
         ["Flip Potential", result.flipPotential || "Unknown"],
         ["Rental Potential", result.rentalPotential || "Unknown"],
         ["Section 8", result.section8Suitability || "Unknown"],
       ];
-      for (const [label, value] of metricRows) {
-        const box = document.createElement("div");
-        box.className = "metric";
-        const labelEl = document.createElement("span");
-        labelEl.textContent = label;
-        const valueEl = document.createElement("strong");
-        valueEl.textContent = value;
-        box.appendChild(labelEl);
-        box.appendChild(valueEl);
-        metrics.appendChild(box);
-      }
-      card.appendChild(metrics);
-
-      const breakdown = document.createElement("div");
-      breakdown.className = "metric-grid";
-      for (const [key, value] of Object.entries(result.conditionBreakdown || {})) {
-        const box = document.createElement("div");
-        box.className = "metric";
-        const labelEl = document.createElement("span");
-        labelEl.textContent = key;
-        const valueEl = document.createElement("strong");
-        valueEl.textContent = String(value);
-        box.appendChild(labelEl);
-        box.appendChild(valueEl);
-        breakdown.appendChild(box);
-      }
-      card.appendChild(breakdown);
-
-      if (Array.isArray(result.warnings) && result.warnings.length) {
-        const warnings = document.createElement("p");
-        warnings.className = "error";
-        warnings.textContent = `Warnings: ${result.warnings.join("; ")}`;
-        card.appendChild(warnings);
-      }
-
-      const summary = document.createElement("p");
-      summary.className = "muted";
-      summary.textContent = result.summary || "No summary returned.";
-      card.appendChild(summary);
-      conditionResults.appendChild(card);
+      $("conditionResults").innerHTML = `
+        <div class="grid stats-grid">
+          ${values.map(([label, value]) => `<div class="stat-card"><div class="stat-label">${escapeHtml(label)}</div><div class="stat-value" style="font-size:22px">${escapeHtml(value)}</div></div>`).join("")}
+        </div>
+        <div class="mini-panel" style="margin-top:14px">
+          <h3>Investor Summary</h3>
+          <p>${escapeHtml(result.summary || "No summary returned.")}</p>
+        </div>
+      `;
     }
 
-    function renderSources(data) {
-      sourcesResults.textContent = "";
-      const missing = data.required_setup || [];
-      sourcesStatus.textContent = data.primary_ready
-        ? "Primary API source is configured. Running live connectivity check..."
-        : "Primary API source is missing. Add RENTCAST_API_KEY in Railway for live analysis.";
-
-      if (data.live_check && data.live_check.rentcast) {
-        const check = data.live_check.rentcast;
-        sourcesStatus.textContent = check.message || sourcesStatus.textContent;
+    async function analyzeCondition() {
+      const files = $("conditionImages").files;
+      if (!files || !files.length) {
+        showError($("conditionResults"), "Upload at least one property photo.");
+        return;
       }
-
-      if (missing.length) {
-        const warning = document.createElement("p");
-        warning.className = "error";
-        warning.textContent = missing.map((source) => `${source.name}: set ${source.env_var}`).join(" | ");
-        sourcesResults.appendChild(warning);
-      }
-
-      for (const source of data.sources || []) {
-        const card = document.createElement("div");
-        card.className = "result-card";
-        const title = document.createElement("strong");
-        title.textContent = `${source.name} - ${source.status}`;
-        card.appendChild(title);
-        const purpose = document.createElement("div");
-        purpose.className = "muted";
-        purpose.textContent = source.purpose;
-        card.appendChild(purpose);
-        sourcesResults.appendChild(card);
+      const formData = new FormData();
+      for (const file of files) formData.append("images", file);
+      formData.append("address", $("conditionAddress").value.trim());
+      formData.append("city", $("conditionCity").value.trim());
+      formData.append("state", $("conditionState").value.trim());
+      $("conditionStatus").textContent = "Analyzing property photos...";
+      $("conditionResults").innerHTML = "";
+      try {
+        const response = await fetch("/api/analyze-property", { method: "POST", body: formData });
+        if (!response.ok) {
+          const error = await response.json().catch(() => null);
+          throw new Error(error?.detail || `Request failed with ${response.status}`);
+        }
+        const result = await response.json();
+        $("conditionStatus").textContent = "Analysis complete.";
+        renderConditionResult(result);
+      } catch (err) {
+        $("conditionStatus").textContent = "";
+        showError($("conditionResults"), `Property analysis failed: ${err.message}`);
       }
     }
 
     async function loadSources() {
       try {
-        const response = await fetch("/data-sources");
-        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-        renderSources(await response.json());
+        const data = await (await fetch("/data-sources")).json();
+        const rentcast = data.live_check?.rentcast;
+        $("sourcesStatus").textContent = rentcast?.message || "Low-cost public-source data engine is active.";
+        $("statApiMode").textContent = rentcast?.enabled ? "On" : "Off";
+        const sourceCards = (data.sources || []).map((source) => `
+          <div class="source-card">
+            <strong>${escapeHtml(source.name || "Source")}</strong>
+            <span>Status: ${escapeHtml(source.status || "unknown")}</span>
+            <span>${escapeHtml(source.message || source.description || "")}</span>
+          </div>
+        `).join("");
+        $("sourcesResults").innerHTML = sourceCards || `<div class="empty-state">No source metadata returned.</div>`;
+        $("settingsSources").innerHTML = $("sourcesResults").innerHTML;
       } catch (err) {
-        sourcesStatus.textContent = "";
-        renderError(sourcesResults, `Could not load source status: ${err.message}`);
+        $("sourcesStatus").textContent = "";
+        showError($("sourcesResults"), `Could not load data-source status: ${err.message}`);
       }
     }
 
-    analyzeBtn.addEventListener("click", async () => {
-      analyzeResults.textContent = "";
-      const city = document.getElementById("city").value.trim();
-      const state = document.getElementById("state").value.trim();
-      const maxPrice = document.getElementById("maxPrice").value.trim();
-      const includePhotos = document.getElementById("photos").checked;
+    function setAllExpanded(value) {
+      filteredDashboardItems().forEach((property) => {
+        state.expanded[String(property.id || property.address)] = value;
+      });
+      renderDashboard();
+    }
 
-      if (!city || !state) {
-        analyzeStatus.textContent = "";
-        renderError(analyzeResults, "City and state are required.");
-        return;
-      }
-
-      analyzeStatus.textContent = "Running analysis...";
+    document.querySelectorAll(".nav-btn").forEach((button) => {
+      button.addEventListener("click", () => switchTab(button.dataset.tab));
+    });
+    $("collapseSidebarBtn").addEventListener("click", () => {
+      $("sidebar").classList.toggle("collapsed");
+      $("collapseSidebarBtn").textContent = $("sidebar").classList.contains("collapsed") ? "Open" : "Collapse";
+    });
+    $("newSearchBtn").addEventListener("click", () => switchTab("research"));
+    $("savedSearchesBtn").addEventListener("click", () => switchTab("dashboard"));
+    $("refreshDataBtn").addEventListener("click", loadSources);
+    $("settingsRefreshBtn").addEventListener("click", loadSources);
+    $("saveSearchBtn").addEventListener("click", saveCurrentSearch);
+    $("analyzeBtn").addEventListener("click", runAnalyze);
+    $("loadListingsBtn").addEventListener("click", loadListings);
+    $("loadDealsBtn").addEventListener("click", loadHighDeals);
+    $("dashboardLoadListingsBtn").addEventListener("click", loadListings);
+    $("dashboardLoadDealsBtn").addEventListener("click", loadHighDeals);
+    $("dashboardSearch").addEventListener("input", renderDashboard);
+    $("dashboardScore").addEventListener("change", renderDashboard);
+    $("dashboardSort").addEventListener("change", renderDashboard);
+    $("expandAllBtn").addEventListener("click", () => setAllExpanded(true));
+    $("collapseAllBtn").addEventListener("click", () => setAllExpanded(false));
+    $("conditionBtn").addEventListener("click", analyzeCondition);
+    $("loadAlertsBtn").addEventListener("click", async () => {
       try {
-        const params = new URLSearchParams({
-          city,
-          state,
-          include_photos: String(includePhotos),
-        });
-        if (maxPrice) params.set("max_price", maxPrice);
-        const response = await fetch(`/analyze?${params.toString()}`);
-        if (!response.ok) {
-          const errorBody = await response.json().catch(() => null);
-          throw new Error(errorBody?.detail || `Request failed: ${response.status}`);
-        }
-        const data = await response.json();
-        if (!Array.isArray(data) || data.length === 0) {
-          analyzeStatus.textContent = "Found 0 analyzed listing(s).";
-          renderMutedMessage(analyzeResults, "No listings returned. Check Data Sources above and add RENTCAST_API_KEY in Railway for reliable live listings.");
-          return;
-        }
-        analyzeStatus.textContent = `Found ${data.length} analyzed listing(s).`;
-        renderListingCards(analyzeResults, data);
+        const data = await (await fetch("/api/deals/alerts")).json();
+        state.dashboardItems = data.alerts || [];
+        renderPropertyList($("alertsResults"), state.dashboardItems, "No alert candidates returned.");
       } catch (err) {
-        analyzeStatus.textContent = "";
-        renderError(analyzeResults, `Analyze failed: ${err.message}`);
+        showError($("alertsResults"), `Could not load alerts: ${err.message}`);
       }
     });
 
-    loadListingsBtn.addEventListener("click", async () => {
-      listingsResults.textContent = "";
-      listingsStatus.textContent = "Loading saved listings...";
-      try {
-        const response = await fetch("/listings");
-        if (!response.ok) {
-          throw new Error(`Request failed: ${response.status}`);
-        }
-        const data = await response.json();
-        const listings = data.listings || [];
-        if (!listings.length) {
-          listingsStatus.textContent = "Loaded 0 saved listing(s).";
-          renderMutedMessage(listingsResults, "No saved listings yet.");
-          return;
-        }
-        dashboardItems = listings;
-        renderDashboard();
-      } catch (err) {
-        listingsStatus.textContent = "";
-        renderError(listingsResults, `Load failed: ${err.message}`);
-      }
-    });
-
-    loadDealsBtn.addEventListener("click", async () => {
-      listingsResults.textContent = "";
-      listingsStatus.textContent = "Loading high-score deals...";
-      try {
-        const response = await fetch("/api/properties/high-deals");
-        if (!response.ok) {
-          throw new Error(`Request failed: ${response.status}`);
-        }
-        const data = await response.json();
-        const listings = data.data || [];
-        if (!listings.length) {
-          listingsStatus.textContent = "Loaded 0 deal(s).";
-          renderMutedMessage(listingsResults, "No property intelligence records yet. Run Analyze first.");
-          return;
-        }
-        dashboardItems = listings;
-        renderDashboard();
-      } catch (err) {
-        listingsStatus.textContent = "";
-        renderError(listingsResults, `Dashboard failed: ${err.message}`);
-      }
-    });
-
-    dashboardSearch.addEventListener("input", renderDashboard);
-    dashboardScore.addEventListener("change", renderDashboard);
-    dashboardSort.addEventListener("change", renderDashboard);
-
-    conditionBtn.addEventListener("click", async () => {
-      conditionResults.textContent = "";
-      const files = document.getElementById("conditionImages").files;
-      if (!files || !files.length) {
-        conditionStatus.textContent = "";
-        renderError(conditionResults, "Upload at least one property photo.");
-        return;
-      }
-      const formData = new FormData();
-      for (const file of files) formData.append("images", file);
-      formData.append("address", document.getElementById("conditionAddress").value.trim());
-      formData.append("city", document.getElementById("conditionCity").value.trim());
-      formData.append("state", document.getElementById("conditionState").value.trim());
-
-      conditionStatus.textContent = "Analyzing property photos...";
-      try {
-        const response = await fetch("/api/analyze-property", {
-          method: "POST",
-          body: formData,
-        });
-        if (!response.ok) {
-          const errorBody = await response.json().catch(() => null);
-          throw new Error(errorBody?.detail || `Request failed: ${response.status}`);
-        }
-        renderConditionResult(await response.json());
-        conditionStatus.textContent = "Analysis complete.";
-      } catch (err) {
-        conditionStatus.textContent = "";
-        renderError(conditionResults, `Property analysis failed: ${err.message}`);
-      }
-    });
-
+    loadSavedSearches();
     loadSources();
+    switchTab("dashboard");
   </script>
 </body>
 </html>
