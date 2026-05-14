@@ -2,6 +2,7 @@
 FastAPI backend for House Deal Scraper.
 """
 
+import logging
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
@@ -19,6 +20,12 @@ from server.scrapers.realtor import fetch_realtor
 from server.scrapers.redfin import fetch_redfin
 from server.scrapers.rentcast import fetch_rentcast
 from server.scrapers.zillow import fetch_zillow
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -82,8 +89,10 @@ async def analyze(
 ):
     try:
         results = await run_in_threadpool(search_listings, city, state, include_photos)
+        logger.info("analyze(%s, %s): %d listings returned", city, state, len(results))
         return [persist_analysis(result) for result in results]
     except Exception as exc:
+        logger.exception("analyze(%s, %s) failed: %s", city, state, exc)
         raise HTTPException(status_code=500, detail="Analysis failed while fetching listings.") from exc
 
 
