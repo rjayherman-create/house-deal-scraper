@@ -1169,6 +1169,16 @@
       });
       actions.appendChild(watch);
 
+      const refreshPhotos = document.createElement("button");
+      refreshPhotos.type = "button";
+      refreshPhotos.className = "ghost";
+      refreshPhotos.textContent = "Refresh Photos";
+      refreshPhotos.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        await refreshPropertyPhotos(property);
+      });
+      actions.appendChild(refreshPhotos);
+
       details.appendChild(actions);
 
       if (property.photos?.length > 1) {
@@ -1315,6 +1325,31 @@
         body: JSON.stringify({ propertyId, userId: "dashboard", note }),
       });
       $("listingsStatus").textContent = response.ok ? "Note saved." : "Could not save note.";
+    }
+
+    async function refreshPropertyPhotos(property) {
+      const propertyId = propertyDatabaseId(property);
+      if (!propertyId) {
+        $("listingsStatus").textContent = "This listing must be saved before refreshing photos.";
+        return;
+      }
+      $("listingsStatus").textContent = "Refreshing photos from the saved source page...";
+      const response = await fetch(`/api/properties/${propertyId}/refresh-photos`, { method: "POST" });
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        $("listingsStatus").textContent = error?.detail || "No photos were found on the source page.";
+        return;
+      }
+      const data = await response.json();
+      state.dashboardItems = state.dashboardItems.map((item) => {
+        const normalized = normalizeProperty(item);
+        if (propertyDatabaseId(normalized) === propertyId) {
+          return { ...item, photos: data.photos, property: { ...(item.property || {}), photos: data.photos } };
+        }
+        return item;
+      });
+      $("listingsStatus").textContent = `Refreshed ${data.photos.length} photo${data.photos.length === 1 ? "" : "s"}.`;
+      renderDashboard();
     }
 
     function loadSavedSearches() {

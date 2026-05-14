@@ -26,6 +26,10 @@ from datetime import datetime
 import logging
 import math
 import re
+from urllib.parse import urljoin
+
+import requests
+from bs4 import BeautifulSoup
 
 # Import real scrapers
 from server.scrapers.redfin import fetch_redfin
@@ -46,6 +50,16 @@ from server.location_normalizer import normalize_location
 from server.low_cost_data_engine import estimate_rent, estimate_section8_rent
 
 logger = logging.getLogger(__name__)
+
+DETAIL_PAGE_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
 
 
 # ---------------------------------------------------------------------
@@ -582,6 +596,128 @@ def extract_photos(raw: Dict[str, Any], include_photos: bool, limit: int = 12) -
     return photos[:limit]
 
 
+def _looks_like_listing_photo(url: str) -> bool:
+    lower = url.lower()
+    if not url.startswith("http"):
+        return False
+    blocked_tokens = [
+        "logo",
+        "sprite",
+        "favicon",
+        "avatar",
+        "profile",
+        "icon",
+        "blank",
+        "transparent",
+        "placeholder",
+        "google-analytics",
+    ]
+    if any(token in lower for token in blocked_tokens):
+        return False
+    return any(
+        token in lower
+        for token in [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+            "photos",
+            "photo",
+            "images",
+            "image",
+            "listing",
+            "cdn",
+            "mls",
+            "zillowstatic",
+            "rdcpix",
+            "redfin",
+            "craigslist",
+        ]
+    )
+
+
+def _append_photo(photos: List[str], seen: set[str], url: Optional[str], base_url: str, limit: int) -> None:
+    if not url or len(photos) >= limit:
+        return
+    absolute = urljoin(base_url, url.strip())
+    absolute = absolute.replace("\\u002F", "/").replace("\\/", "/")
+    if absolute in seen or not _looks_like_listing_photo(absolute):
+        return
+    seen.add(absolute)
+    photos.append(absolute)
+
+
+def _srcset_urls(value: str) -> List[str]:
+    urls = []
+    for part in value.split(","):
+        candidate = part.strip().split(" ")[0]
+        if candidate:
+            urls.append(candidate)
+    return urls
+
+
+def fetch_detail_page_photos(source_url: str, limit: int = 12) -> List[str]:
+    if not source_url or not source_url.startswith("http"):
+        return []
+
+    try:
+        response = requests.get(source_url, headers=DETAIL_PAGE_HEADERS, timeout=12)
+    except requests.RequestException as exc:
+        logger.info("Photo detail fetch failed for %s: %s", source_url, exc)
+        return []
+
+    if response.status_code != 200 or not response.text:
+        logger.info("Photo detail fetch returned HTTP %s for %s", response.status_code, source_url)
+        return []
+
+    photos: List[str] = []
+    seen: set[str] = set()
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    meta_selectors = [
+        "meta[property='og:image']",
+        "meta[property='og:image:url']",
+        "meta[name='twitter:image']",
+        "meta[name='twitter:image:src']",
+    ]
+    for selector in meta_selectors:
+        for tag in soup.select(selector):
+            _append_photo(photos, seen, tag.get("content"), source_url, limit)
+
+    for image in soup.select("img"):
+        for attr in ("src", "data-src", "data-lazy-src", "data-original", "data-image", "data-testid"):
+            _append_photo(photos, seen, image.get(attr), source_url, limit)
+        for attr in ("srcset", "data-srcset"):
+            value = image.get(attr)
+            if value:
+                for url in _srcset_urls(value):
+                    _append_photo(photos, seen, url, source_url, limit)
+
+    if len(photos) < limit:
+        for match in re.finditer(r'https?:\\?/\\?/[^"\'\s<>]+?(?:\.jpg|\.jpeg|\.png|\.webp)(?:\?[^"\'\s<>]*)?', response.text, flags=re.IGNORECASE):
+            url = match.group(0).replace("\\/", "/")
+            _append_photo(photos, seen, url, source_url, limit)
+            if len(photos) >= limit:
+                break
+
+    return photos[:limit]
+
+
+def enrich_listing_photos_from_detail(raw: Dict[str, Any], current_photos: List[str], include_photos: bool, limit: int = 12) -> List[str]:
+    if not include_photos:
+        return []
+    source_url = raw.get("source_url") or raw.get("url") or raw.get("listingUrl")
+    photos: List[str] = []
+    seen: set[str] = set()
+    for photo in current_photos:
+        _append_photo(photos, seen, photo, source_url or "", limit)
+    if len(photos) >= min(3, limit):
+        return photos[:limit]
+    for photo in fetch_detail_page_photos(str(source_url or ""), limit=limit):
+        _append_photo(photos, seen, photo, source_url or "", limit)
+    return photos[:limit]
+
+
 def search_listings(
     city: str,
     state: str,
@@ -672,6 +808,10 @@ def search_listings(
     analyses = []
 
     for source_name, raw in listings_raw:
+        photos = enrich_listing_photos_from_detail(raw, extract_photos(raw, include_photos), include_photos)
+        if include_photos and photos:
+            raw["photos"] = photos
+
         listing = Listing(
             source=source_name,
             source_id=raw.get("source_id") or raw.get("address", ""),
@@ -683,7 +823,7 @@ def search_listings(
             baths=parse_optional_float(raw.get("baths")),
             sqft=parse_optional_float(raw.get("sqft")),
             year_built=raw.get("year_built"),
-            photos=extract_photos(raw, include_photos),
+            photos=photos,
             description=raw.get("description") or "",
             seller_contact=None,
             raw_data=raw

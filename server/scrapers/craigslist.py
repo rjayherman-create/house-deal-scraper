@@ -8,6 +8,18 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 
+def _craigslist_image_urls(data_ids: str, limit: int = 8):
+    urls = []
+    for item in (data_ids or "").split(","):
+        image_id = item.split(":")[-1].strip()
+        if not image_id:
+            continue
+        urls.append(f"https://images.craigslist.org/{image_id}_600x450.jpg")
+        if len(urls) >= limit:
+            break
+    return urls
+
+
 def fetch_craigslist(city, state, limit):
     """
     Craigslist HTML scraper.
@@ -65,7 +77,7 @@ def fetch_craigslist(city, state, limit):
                         "zip_code": "",
                         "asking_price": price_val,
                         "source_url": urljoin(url, link_el.get("href")) if link_el else url,
-                        "photos": [],
+                        "photos": _craigslist_image_urls(post.get("data-ids", "")),
                     })
 
                 if results:
@@ -97,7 +109,7 @@ def fetch_craigslist(city, state, limit):
                     "zip_code": "",
                     "asking_price": price_val,
                     "source_url": title.get("href") or url,
-                    "photos": [image.get("data-ids", "").split(":")[-1]] if image and image.get("data-ids") else [],
+                        "photos": _craigslist_image_urls(image.get("data-ids", "")) if image and image.get("data-ids") else [],
                 })
 
             if results:

@@ -13,7 +13,7 @@ from pathlib import Path
 
 from database import get_all_listings, init_db, upsert_listing
 from server.data_sources import has_primary_listing_source, serialize_data_sources
-from server.engine import ListingAnalysis, search_listings, serialize_analysis
+from server.engine import ListingAnalysis, fetch_detail_page_photos, search_listings, serialize_analysis
 from server.location_normalizer import normalize_location
 from server.low_cost_data_engine import analyze_low_cost_property, data_priority, rent_comps
 from server.property_system import (
@@ -26,6 +26,7 @@ from server.property_system import (
     ingest_property_from_analysis,
     init_property_system_db,
     update_property_status,
+    update_property_photos,
 )
 from server.property_condition_analyzer import (
     PropertyAnalyzerConfigurationError,
@@ -364,6 +365,32 @@ async def api_update_property_status(property_id: int, data: dict):
         raise
     except Exception as exc:
         logger.exception("property status update failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/properties/{property_id}/refresh-photos")
+async def api_refresh_property_photos(property_id: int):
+    try:
+        detail = await run_in_threadpool(get_property_detail, property_id)
+        property_record = detail.get("property")
+        if not property_record:
+            raise HTTPException(status_code=404, detail="Property not found")
+        source_url = property_record.get("source_url") or (property_record.get("links") or {}).get("source")
+        if not source_url:
+            raise HTTPException(status_code=400, detail="Property does not have a source URL to scrape for photos.")
+        photos = await run_in_threadpool(fetch_detail_page_photos, source_url, 20)
+        if not photos:
+            raise HTTPException(status_code=404, detail="No photos were found on the saved source page.")
+        property_record = await run_in_threadpool(update_property_photos, property_id, photos)
+        return {
+            "success": True,
+            "photos": photos,
+            "property": property_record,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("property photo refresh failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

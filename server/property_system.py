@@ -620,6 +620,21 @@ def update_property_status(property_id: int, status: str) -> Optional[dict[str, 
     return _row_to_dict(row) if row else None
 
 
+def update_property_photos(property_id: int, photo_urls: list[str]) -> Optional[dict[str, Any]]:
+    with get_property_engine().begin() as conn:
+        conn.execute(
+            update(properties)
+            .where(properties.c.id == property_id)
+            .values(photos=photo_urls[:20], updated_at=datetime.utcnow())
+        )
+        row = (
+            conn.execute(select(properties).where(properties.c.id == property_id))
+            .mappings()
+            .first()
+        )
+    return _row_to_dict(row) if row else None
+
+
 def get_deal_alerts(min_score: int = 70) -> list[dict[str, Any]]:
     deals = get_high_deals(limit=500)
     return [
