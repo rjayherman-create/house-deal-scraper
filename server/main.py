@@ -11,7 +11,14 @@ from starlette.concurrency import run_in_threadpool
 from pathlib import Path
 
 from database import get_all_listings, init_db, upsert_listing
+from server.data_sources import has_primary_listing_source, serialize_data_sources
 from server.engine import ListingAnalysis, search_listings, serialize_analysis
+from server.scrapers.craigslist import fetch_craigslist
+from server.scrapers.facebook import fetch_facebook
+from server.scrapers.realtor import fetch_realtor
+from server.scrapers.redfin import fetch_redfin
+from server.scrapers.rentcast import fetch_rentcast
+from server.scrapers.zillow import fetch_zillow
 
 
 app = FastAPI(
@@ -88,3 +95,55 @@ async def root():
 @app.get("/status")
 async def status():
     return {"status": "House Deal Scraper Backend Running"}
+
+
+@app.get("/data-sources")
+async def data_sources():
+    sources = serialize_data_sources()
+    return {
+        "primary_ready": has_primary_listing_source(),
+        "sources": sources,
+        "required_setup": [
+            source
+            for source in sources
+            if source["required_for_analysis"] and not source["enabled"]
+        ],
+    }
+
+
+@app.get("/debug/scrapers")
+async def debug_scrapers(
+    city: str = Query("Detroit", description="City to test"),
+    state: str = Query("MI", description="State to test"),
+):
+    scrapers = [
+        ("RentCast", fetch_rentcast),
+        ("Redfin", fetch_redfin),
+        ("Zillow", fetch_zillow),
+        ("Realtor", fetch_realtor),
+        ("Craigslist", fetch_craigslist),
+        ("Facebook", fetch_facebook),
+    ]
+    results = []
+    for name, scraper in scrapers:
+        try:
+            rows = await run_in_threadpool(scraper, city, state, 5)
+            results.append({
+                "source": name,
+                "ok": True,
+                "count": len(rows),
+                "sample": rows[:1],
+            })
+        except Exception as exc:
+            results.append({
+                "source": name,
+                "ok": False,
+                "count": 0,
+                "error": str(exc),
+            })
+    return {
+        "city": city,
+        "state": state,
+        "sources": serialize_data_sources(),
+        "scrapers": results,
+    }

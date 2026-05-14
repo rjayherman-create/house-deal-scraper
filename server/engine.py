@@ -32,6 +32,13 @@ from server.scrapers.zillow import fetch_zillow
 from server.scrapers.realtor import fetch_realtor
 from server.scrapers.craigslist import fetch_craigslist
 from server.scrapers.facebook import fetch_facebook
+from server.scrapers.rentcast import (
+    fetch_property_record,
+    fetch_rent_estimate,
+    fetch_rentcast,
+    fetch_value_estimate,
+    is_rentcast_enabled,
+)
 
 
 # ---------------------------------------------------------------------
@@ -154,7 +161,32 @@ def ai_rate_systems(photos: List[str], description: str) -> SystemRatings:
 
 
 def ai_compute_financial_score(listing: Listing) -> float:
-    return 0.7
+    value_estimate = listing.raw_data.get("value_estimate") or {}
+    rent_estimate = listing.raw_data.get("rent_estimate") or {}
+    estimated_value = parse_optional_float(
+        value_estimate.get("price")
+        or value_estimate.get("value")
+        or value_estimate.get("estimatedValue")
+        or value_estimate.get("median")
+    )
+    estimated_rent = parse_optional_float(
+        rent_estimate.get("rent")
+        or rent_estimate.get("price")
+        or rent_estimate.get("estimatedRent")
+        or rent_estimate.get("median")
+    )
+
+    price_score = 0.5
+    if estimated_value and listing.price:
+        discount = (estimated_value - listing.price) / estimated_value
+        price_score = max(0.0, min(1.0, 0.45 + discount * 1.6))
+
+    rent_score = 0.5
+    if estimated_rent and listing.price:
+        annual_rent_yield = (estimated_rent * 12) / listing.price
+        rent_score = max(0.0, min(1.0, annual_rent_yield / 0.14))
+
+    return round(0.7 * price_score + 0.3 * rent_score, 3)
 
 
 def ai_detect_package_seller(listing: Listing, all_listings: List[Listing]) -> float:
@@ -211,8 +243,25 @@ def compute_photo_age_multiplier(photo_analysis: PhotoAnalysis) -> float:
 
 
 def compute_comp_analysis(listing: Listing, photo_analysis: PhotoAnalysis, comps: List[Dict[str, Any]]) -> CompAnalysis:
+    comp_prices = sorted(
+        price
+        for price in (
+            parse_optional_float(c.get("price") or c.get("salePrice") or c.get("listPrice") or c.get("value"))
+            for c in comps
+        )
+        if price and price > 0
+    )
     median_comp_price = None
-    avg_comp_age_months = None
+    if comp_prices:
+        mid = len(comp_prices) // 2
+        median_comp_price = comp_prices[mid] if len(comp_prices) % 2 else (comp_prices[mid - 1] + comp_prices[mid]) / 2
+
+    comp_days = [
+        days
+        for days in (parse_optional_float(c.get("daysOld") or c.get("days_on_market")) for c in comps)
+        if days is not None
+    ]
+    avg_comp_age_months = (sum(comp_days) / len(comp_days) / 30) if comp_days else None
     num_comps = len(comps)
 
     comp_gap_score = compute_comp_gap_score(listing.price, median_comp_price)
@@ -236,7 +285,11 @@ def compute_comp_analysis(listing: Listing, photo_analysis: PhotoAnalysis, comps
         comp_similarity_score=comp_similarity_score,
         photo_age_multiplier=photo_age_multiplier,
         comp_score=comp_score,
-        notes="Placeholder comp analysis; wire real comps + stats."
+        notes=(
+            f"Based on {num_comps} live comparable record(s)."
+            if num_comps
+            else "No live comparable records were available; score uses conservative defaults."
+        )
     )
 
 
@@ -414,6 +467,58 @@ def generate_questionnaire(analysis: ListingAnalysis) -> Dict[str, Any]:
 # Main search entrypoint
 # ---------------------------------------------------------------------
 
+def parse_optional_float(value: Any) -> Optional[float]:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        cleaned = re.sub(r"[^\d.]", "", str(value))
+        if not cleaned:
+            return None
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+
+
+def extract_rentcast_comps(value_estimate: Dict[str, Any]) -> List[Dict[str, Any]]:
+    comps = value_estimate.get("comparables") or value_estimate.get("comps") or []
+    return comps if isinstance(comps, list) else []
+
+
+def enrich_listing(listing: Listing) -> Listing:
+    if not is_rentcast_enabled():
+        return listing
+
+    address = ", ".join(part for part in [listing.address, listing.city, listing.state] if part)
+    try:
+        property_record = fetch_property_record(address)
+    except Exception:
+        property_record = {}
+    try:
+        value_estimate = fetch_value_estimate(address, comp_count=10)
+    except Exception:
+        value_estimate = {}
+    try:
+        rent_estimate = fetch_rent_estimate(address, comp_count=10)
+    except Exception:
+        rent_estimate = {}
+
+    merged_raw = dict(listing.raw_data)
+    merged_raw["property_record"] = property_record
+    merged_raw["value_estimate"] = value_estimate
+    merged_raw["rent_estimate"] = rent_estimate
+
+    subject = value_estimate.get("subjectProperty") if isinstance(value_estimate, dict) else {}
+    subject = subject if isinstance(subject, dict) else {}
+    listing.beds = listing.beds or parse_optional_float(subject.get("bedrooms") or property_record.get("bedrooms"))
+    listing.baths = listing.baths or parse_optional_float(subject.get("bathrooms") or property_record.get("bathrooms"))
+    listing.sqft = listing.sqft or parse_optional_float(subject.get("squareFootage") or property_record.get("squareFootage"))
+    listing.year_built = listing.year_built or subject.get("yearBuilt") or property_record.get("yearBuilt")
+    listing.raw_data = merged_raw
+    return listing
+
 def search_listings(city: str, state: str, include_photos: bool = False) -> List[ListingAnalysis]:
     listings_raw = []
     seen_listings = set()
@@ -438,6 +543,7 @@ def search_listings(city: str, state: str, include_photos: bool = False) -> List
 
     # Pull from all scrapers
     scrapers = [
+        ("RentCast", fetch_rentcast),
         ("Redfin", fetch_redfin),
         ("Zillow", fetch_zillow),
         ("Realtor", fetch_realtor),
@@ -476,25 +582,26 @@ def search_listings(city: str, state: str, include_photos: bool = False) -> List
     for source_name, raw in listings_raw:
         listing = Listing(
             source=source_name,
-            source_id=raw.get("address", ""),
+            source_id=raw.get("source_id") or raw.get("address", ""),
             address=raw.get("address", ""),
             city=raw.get("city", city),
             state=raw.get("state", state),
             price=raw["asking_price"],
-            beds=None,
-            baths=None,
-            sqft=None,
-            year_built=None,
+            beds=parse_optional_float(raw.get("beds")),
+            baths=parse_optional_float(raw.get("baths")),
+            sqft=parse_optional_float(raw.get("sqft")),
+            year_built=raw.get("year_built"),
             photos=[],
             description="",
             seller_contact=None,
             raw_data=raw
         )
+        listing = enrich_listing(listing)
 
         photo_analysis = ai_estimate_photo_age_and_distress(listing.photos, listing.description)
         system_ratings = ai_rate_systems(listing.photos, listing.description)
 
-        comps = []
+        comps = extract_rentcast_comps(listing.raw_data.get("value_estimate") or {})
         comp_analysis = compute_comp_analysis(listing, photo_analysis, comps)
 
         package_seller_score = ai_detect_package_seller(listing, [])
