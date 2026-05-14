@@ -30,7 +30,7 @@ from server.scrapers.craigslist import fetch_craigslist
 from server.scrapers.facebook import fetch_facebook
 from server.scrapers.realtor import fetch_realtor
 from server.scrapers.redfin import fetch_redfin
-from server.scrapers.rentcast import check_rentcast, fetch_rentcast
+from server.scrapers.rentcast import RentCastAuthenticationError, check_rentcast, fetch_rentcast
 from server.scrapers.zillow import fetch_zillow
 
 logging.basicConfig(
@@ -133,6 +133,9 @@ async def analyze(
                     }
                 )
         return serialized_results
+    except RentCastAuthenticationError as exc:
+        logger.exception("RentCast authentication failed during analyze(%s, %s): %s", normalized_city, normalized_state, exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("analyze(%s, %s) failed: %s", normalized_city, normalized_state, exc)
         raise HTTPException(status_code=500, detail="Analysis failed while fetching listings.") from exc

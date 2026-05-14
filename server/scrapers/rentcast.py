@@ -10,6 +10,10 @@ logger = logging.getLogger(__name__)
 RENTCAST_BASE_URL = os.getenv("RENTCAST_API_BASE_URL", "https://api.rentcast.io/v1").rstrip("/")
 
 
+class RentCastAuthenticationError(RuntimeError):
+    pass
+
+
 def is_rentcast_enabled() -> bool:
     return bool((os.getenv("RENTCAST_API_KEY") or "").strip())
 
@@ -30,7 +34,7 @@ def _request(path: str, params: Dict[str, Any]) -> Any:
         timeout=15,
     )
     if response.status_code in (401, 403):
-        raise RuntimeError("RentCast authentication failed. Check RENTCAST_API_KEY in Railway.")
+        raise RentCastAuthenticationError("RentCast authentication failed. Check RENTCAST_API_KEY in Railway.")
     response.raise_for_status()
     return response.json()
 
@@ -74,7 +78,7 @@ def check_rentcast(city: str = "Detroit", state: str = "MI") -> Dict[str, Any]:
             "base_url": RENTCAST_BASE_URL,
             "sample_count": len(rows),
         }
-    except RuntimeError as exc:
+    except RentCastAuthenticationError as exc:
         return {
             "enabled": True,
             "ok": False,
@@ -207,6 +211,9 @@ def fetch_rentcast(city: str, state: str, limit: int = 20) -> List[Dict[str, Any
     for attempt_scope, params in search_attempts:
         try:
             payload = _request("/listings/sale", params)
+        except RentCastAuthenticationError:
+            logger.warning("RentCast %s lookup failed for %s, %s: authentication failed", attempt_scope, city, state)
+            raise
         except Exception as exc:
             logger.warning("RentCast %s lookup failed for %s, %s: %s", attempt_scope, city, state, exc)
             continue

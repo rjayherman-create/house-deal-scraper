@@ -34,6 +34,7 @@ from server.scrapers.realtor import fetch_realtor
 from server.scrapers.craigslist import fetch_craigslist
 from server.scrapers.facebook import fetch_facebook
 from server.scrapers.rentcast import (
+    RentCastAuthenticationError,
     fetch_property_record,
     fetch_rent_estimate,
     fetch_rentcast,
@@ -587,6 +588,8 @@ def search_listings(city: str, state: str, include_photos: bool = False) -> List
                 normalized["address"] = address
                 normalized["asking_price"] = price
                 listings_raw.append((source_name, normalized))
+        except RentCastAuthenticationError:
+            raise
         except Exception as exc:
             logger.warning(
                 "%s scraper failed for %s, %s: %s",
