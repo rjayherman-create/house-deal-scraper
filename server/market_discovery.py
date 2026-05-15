@@ -13,6 +13,7 @@ from typing import Any, Mapping, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, Numeric, String, Table, Text, delete, desc, insert, select
 
+from server.hud_fmr import is_hud_fmr_enabled
 from server.property_system import _jsonable, _row_to_dict, get_property_engine, metadata, properties
 from server.rent_analyzer import deal_analysis
 
@@ -138,10 +139,11 @@ def _score_market(
     rents = [value for value in rents if value]
     avg_price = sum(prices) / len(prices) if prices else 0
     avg_rent = sum(rents) / len(rents) if rents else 0
+    hud_enabled = is_hud_fmr_enabled()
     section8_values = [
         _num(rent_by_property.get(int(row.get("id") or 0), {}).get("section8_rent"))
         for row in rows
-    ]
+    ] if hud_enabled else []
     section8_values = [value for value in section8_values if value]
     avg_section8 = sum(section8_values) / len(section8_values) if section8_values else None
     foreclosure_rate = 100 * sum(1 for row in rows if row.get("foreclosure")) / len(rows) if rows else 0
@@ -204,7 +206,8 @@ def calculate_property_ai_score(property_data: Mapping[str, Any], market: Mappin
     reasons = []
     price = _num(property_data.get("estimated_value")) or 0
     rent = _num(rent_analysis.get("estimated_rent") or property_data.get("estimated_rent")) or 0
-    section8 = _num(rent_analysis.get("section8_rent") or market.get("avg_section8_rent")) or 0
+    section8 = _num(rent_analysis.get("section8_rent") or market.get("avg_section8_rent")) if is_hud_fmr_enabled() else None
+    section8 = section8 or 0
     market_avg_price = _num(market.get("avg_price")) or price
     investor_activity = _num(market.get("investor_activity_score")) or 5
     appreciation = _num(market.get("appreciation_score")) or 5
